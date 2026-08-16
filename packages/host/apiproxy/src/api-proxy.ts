@@ -110,6 +110,7 @@ import {
   inspectApiRemoteSession,
 } from '@deepseek-ai/dsh-api-remotes'
 import { canOpenNativePath, openNativePath, openNativeTextFile } from './native-path-opener.ts'
+import { installPermissionNotify } from './permission-notify.ts'
 
 /** Page size when history is called without maxMessages. */
 const DEFAULT_MAX_MESSAGES = 50
@@ -1217,6 +1218,14 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     for (const queue of muxQueues) queue.push(envelope)
   }
 
+  // --- Permission-request desktop alert ----------------------------------
+  // The Web approval badge is quiet by design; someone working in another
+  // window misses it and the agent stalls. Fire a Windows taskbar flash +
+  // chime (win32 only, fire-and-forget) on the approval broadcast below —
+  // never on mux replay, which merely re-presents an already-known request.
+  // Behavior reads the `permission-notify` settings namespace per request.
+  const permissionNotify = installPermissionNotify(ctx)
+
   // Projection change feed → session/projection push frames. The carrier
   // mints the wire frame (the Service Definition package holds no wire vocabulary); the
   // child activates only when a projection registry is composed, and the
@@ -1424,6 +1433,10 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         pendingApprovals.set(pending.rpcId, pending)
         req.signal?.addEventListener('abort', onAbort, { once: true })
         const envelope = requestedFrame(pending)
+        permissionNotify.notify({
+          toolName: pending.toolName,
+          ...pending.reason === undefined ? {} : { reason: pending.reason },
+        })
         for (const queue of muxQueues) queue.push(envelope)
       })
     })
