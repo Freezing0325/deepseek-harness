@@ -1,4 +1,9 @@
 // @vitest-environment jsdom
+/**
+ * buildRenderApp on SlotTestRuntime: the fail-loud sessions precondition, the
+ * one ctx-level renderSlot('root') call, and the document-title projection
+ * arms over the real slot stack.
+ */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
 import { Context } from '@deepseek-ai/cordis'
@@ -14,6 +19,8 @@ afterEach(async () => {
   runtime = undefined
   document.title = ''
   vi.unstubAllEnvs()
+  delete (document as unknown as Record<string, unknown>).hidden
+  vi.useRealTimers()
 })
 
 async function bench() {
@@ -56,6 +63,22 @@ describe('buildRenderApp', () => {
     expect(document.title).toBe('First — Product')
     b.runtime.sessions.list.update((draft) => { draft.current = 'ghost' as SessionId })
     await b.runtime.flush()
+    expect(document.title).toBe('Product')
+  })
+
+  it('flashes the tab title while a session waits on the user and stops when it is gone', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    document.title = 'Product'
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true })
+    const b = await bench()
+    render(<>{b.renderApp()}</>)
+    expect(document.title).toBe('Product')
+    await b.runtime.sessions.add({ id: 's1', summary: { pendingInteraction: 'approval' } })
+    vi.advanceTimersByTime(1000)
+    expect(document.title).toBe('⚠️ 待审批')
+    await b.runtime.sessions.remove('s1')
+    expect(document.title).toBe('Product')
+    vi.advanceTimersByTime(5000)
     expect(document.title).toBe('Product')
   })
 })

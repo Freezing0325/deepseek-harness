@@ -29,7 +29,11 @@ export function buildRenderApp(deps: AssemblyDeps): () => ReactNode {
       const id = state.current
       return id === undefined ? undefined : state.byId[id]?.title
     })
-    return <DocumentTitle {...title === undefined ? {} : { title }} />
+    const pendingInteraction = useSessions((state) =>
+      state.ids.some((id) => state.byId[id]?.pendingInteraction !== undefined))
+    return (
+      <DocumentTitle {...title === undefined ? {} : { title }} pendingInteraction={pendingInteraction} />
+    )
   }
   return () => (
     <>
