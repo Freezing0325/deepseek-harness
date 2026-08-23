@@ -32,9 +32,23 @@ export type SandboxMode = 'read-only' | 'workspace-write' | 'danger-full-access'
 export type ConfinedSandboxMode = Exclude<SandboxMode, 'danger-full-access'>
 
 /**
- * The complete file-effect policy resolved for one capability call. The root
- * is carried even under modes that do not consume it so callers can resolve
- * policy once before choosing the enforcement path.
+ * The outbound-network policy for one capability call — an INDEPENDENT axis
+ * from the file-effect {@link SandboxMode}, so a deployment can allow network
+ * access while keeping file writes confined (and vice versa). `allow` is the
+ * default: the file-sandbox backends do not gate sockets, so outbound
+ * HTTP(S)/TCP/DNS is permitted unless a consumer decides otherwise. `deny`
+ * means the consumer refuses network-bearing operations (e.g. the web tools).
+ * Enforcement is consumer-owned: this seam only carries the resolved policy.
+ */
+export type NetworkPolicy = 'allow' | 'deny'
+
+/** Every {@link NetworkPolicy}, for option advertisement and runtime validation. */
+export const NETWORK_POLICIES: readonly NetworkPolicy[] = ['allow', 'deny']
+
+/**
+ * The complete resolved policy for one capability call. The root is carried
+ * even under modes that do not consume it so callers can resolve policy once
+ * before choosing the enforcement path.
  */
 export interface SandboxExecutionPolicy {
   /** The file-effect mode this execution runs under. */
@@ -49,6 +63,13 @@ export interface SandboxExecutionPolicy {
    * for agentless calls, which fall back to per-call backend state.
    */
   sessionId?: SessionId
+  /**
+   * The outbound-network policy this call runs under. Absent means `allow`
+   * (the file backends do not restrict sockets); consumers that refuse
+   * network-bearing operations when the policy is `deny` treat an absent
+   * value as `allow`.
+   */
+  network?: NetworkPolicy
 }
 
 /**

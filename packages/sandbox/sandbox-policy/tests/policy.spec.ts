@@ -11,10 +11,17 @@ import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
-import SandboxPolicyService, { SANDBOX_MODES, effectiveSandboxMode, setSandboxMode } from '@deepseek-ai/dsh-sandbox-policy'
+import SandboxPolicyService, {
+  NETWORK_POLICIES,
+  SANDBOX_MODES,
+  effectiveNetworkPolicy,
+  effectiveSandboxMode,
+  setNetworkPolicy,
+  setSandboxMode,
+} from '@deepseek-ai/dsh-sandbox-policy'
 import SystemPrompt, { renderContextSnapshot, renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 
-async function mounted(config: { mode?: 'read-only' | 'workspace-write' | 'danger-full-access'; workspaceRoot?: string } = {}) {
+async function mounted(config: { mode?: 'read-only' | 'workspace-write' | 'danger-full-access'; networkAccess?: 'allow' | 'deny'; workspaceRoot?: string } = {}) {
   const ctx = new Context()
   await ctx.plugin(SandboxPolicyService, config)
   return ctx
@@ -39,10 +46,16 @@ async function policyContext(ctx: Context, activeSession: Session): Promise<stri
     .contexts.find(context => context.name === 'sandbox:policy')?.text
 }
 
+async function networkPolicyContext(ctx: Context, activeSession: Session): Promise<string | undefined> {
+  return (await ctx.systemPrompt.assemble({ agent: agentFor(activeSession) }))
+    .contexts.find(context => context.name === 'network:policy')?.text
+}
+
 describe('SandboxPolicyService', () => {
-  it('defaults to read-only under the process cwd', async () => {
+  it('defaults to read-only under the process cwd with network allowed', async () => {
     const ctx = await mounted()
     expect(ctx.sandboxPolicy.defaultMode).toBe('read-only')
+    expect(ctx.sandboxPolicy.defaultNetwork).toBe('allow')
     expect(ctx.sandboxPolicy.workspaceRoot).toBe(resolve(process.cwd()))
   })
 
@@ -57,6 +70,7 @@ describe('SandboxPolicyService', () => {
     expect(ctx.sandboxPolicy.resolve()).toEqual({
       mode: 'workspace-write',
       workspaceRoot: resolve('/fallback'),
+      network: 'allow',
     })
   })
 
@@ -70,17 +84,20 @@ describe('SandboxPolicyService', () => {
       mode: 'workspace-write',
       workspaceRoot: resolve('/projects/first'),
       sessionId: 'sess-first',
+      network: 'allow',
     })
     expect(ctx.sandboxPolicy.resolve({ session: second })).toEqual({
       mode: 'read-only',
       workspaceRoot: resolve('/projects/second'),
       sessionId: 'sess-second',
+      network: 'allow',
     })
     expect(ctx.sandboxPolicy.overrideOf(first)).toBeUndefined()
     expect(ctx.sandboxPolicy.overrideOf(second)).toBe('read-only')
     expect(ctx.sandboxPolicy.resolve()).toEqual({
       mode: 'workspace-write',
       workspaceRoot: resolve('/fallback'),
+      network: 'allow',
     })
   })
 
@@ -101,6 +118,7 @@ describe('SandboxPolicyService', () => {
         mode: 'workspace-write',
         workspaceRoot: realpathSync.native(physical),
         sessionId: 'sess-symlink-parent',
+        network: 'allow',
       })
     } finally {
       rmSync(root, { recursive: true, force: true })
@@ -115,6 +133,7 @@ describe('SandboxPolicyService', () => {
       mode: 'danger-full-access',
       workspaceRoot: resolve('/projects/approved'),
       sessionId: 'sess-approved',
+      network: 'allow',
     })
   })
 
@@ -142,7 +161,7 @@ describe('SandboxPolicyService', () => {
 })
 
 describe('sandbox:policy request context', () => {
-  async function promptMounted(config: { mode?: 'read-only' | 'workspace-write' | 'danger-full-access'; workspaceRoot?: string } = {}): Promise<Context> {
+  async function promptMounted(config: { mode?: 'read-only' | 'workspace-write' | 'danger-full-access'; networkAccess?: 'allow' | 'deny'; workspaceRoot?: string } = {}): Promise<Context> {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(SandboxPolicyService, config)
@@ -205,6 +224,43 @@ describe('sandbox:policy request context', () => {
     expect(await policyContext(ctx, resumed)).toContain('workspace-write')
     expect((await ctx.systemPrompt.assemble()).contexts.find(context => context.name === 'sandbox:policy')?.text).toBe('')
   })
+
+  it('renders the default allow network policy naming the independent axis', async () => {
+    const ctx = await promptMounted({ workspaceRoot: '/fallback' })
+    const text = await networkPolicyContext(ctx, session('sess-net-allow', '/projects/current'))
+    expect(text).toContain('Current DSH network policy: allow')
+    expect(text).toContain('NOT restricted by the file sandbox')
+    expect(text).toContain('no permission request is needed for the network itself')
+  })
+
+  it('renders the deny network policy and drops the allow guidance', async () => {
+    const ctx = await promptMounted({ networkAccess: 'deny', workspaceRoot: '/fallback' })
+    const text = await networkPolicyContext(ctx, session('sess-net-deny', '/projects/current'))
+    expect(text).toBe('Current DSH network policy: deny. Do not attempt outbound network access (HTTP(S), TCP, DNS) in shell commands or web tools; web_search and web_fetch are refused by policy, and network-bearing shell commands should be avoided.')
+  })
+
+  it('reflects a durable network switch on the next assembly while the file context is unaffected', async () => {
+    const ctx = await promptMounted({ workspaceRoot: '/fallback' })
+    const active = session('sess-net-switch', '/projects/current')
+    expect(await networkPolicyContext(ctx, active)).toContain('policy: allow')
+
+    setNetworkPolicy(active, 'deny')
+    expect(await networkPolicyContext(ctx, active)).toContain('policy: deny')
+    expect(await policyContext(ctx, active)).toContain('read-only')
+  })
+
+  it('lets an approved network override outrank the session policy', async () => {
+    const ctx = await promptMounted({ networkAccess: 'deny', workspaceRoot: '/fallback' })
+    const active = session('sess-net-approved', '/projects/approved')
+    setNetworkPolicy(active, 'deny')
+    expect(ctx.sandboxPolicy.resolve({ session: active, network: 'allow' })).toEqual({
+      mode: 'read-only',
+      workspaceRoot: resolve('/projects/approved'),
+      sessionId: 'sess-net-approved',
+      network: 'allow',
+    })
+    expect(ctx.sandboxPolicy.networkOverrideOf(active)).toBe('deny')
+  })
 })
 
 describe('the sandbox/mode session kit', () => {
@@ -226,5 +282,27 @@ describe('the sandbox/mode session kit', () => {
     const modeEvents = session.events.filter(e => e.type === 'sandbox/mode')
     expect(modeEvents).toHaveLength(1)
     expect(modeEvents[0]?.data).toEqual({ mode: 'danger-full-access' })
+  })
+})
+
+describe('the network/policy session kit', () => {
+  it('NETWORK_POLICIES lists every policy for advertisement and validation', () => {
+    expect(NETWORK_POLICIES).toEqual(['allow', 'deny'])
+  })
+
+  it('effectiveNetworkPolicy folds to the last switch, or undefined without one', () => {
+    const session = Session.create(SessionId('sess-net-fold'))
+    expect(effectiveNetworkPolicy(session.events)).toBeUndefined()
+    setNetworkPolicy(session, 'allow')
+    setNetworkPolicy(session, 'deny')
+    expect(effectiveNetworkPolicy(session.events)).toBe('deny')
+  })
+
+  it('setNetworkPolicy appends exactly one network/policy event per switch', () => {
+    const session = Session.create(SessionId('sess-net-write'))
+    setNetworkPolicy(session, 'deny')
+    const policyEvents = session.events.filter(e => e.type === 'network/policy')
+    expect(policyEvents).toHaveLength(1)
+    expect(policyEvents[0]?.data).toEqual({ network: 'deny' })
   })
 })

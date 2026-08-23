@@ -3,6 +3,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import type { InvariantFailure, InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import { NETWORK_POLICIES } from '@deepseek-ai/dsh-sandbox'
 import { SANDBOX_MODES } from './session-mode.ts'
 
 const PACKAGE_NAME = '@deepseek-ai/dsh-sandbox-policy'
@@ -18,9 +19,12 @@ function validateEvent(event: SessionEvent, fail: InvariantFailure): void {
   if (event.type === 'sandbox/mode' && !SANDBOX_MODES.includes(event.data.mode)) {
     fail(`sandbox/mode carries unknown mode ${JSON.stringify(event.data.mode)}`)
   }
+  if (event.type === 'network/policy' && !NETWORK_POLICIES.includes(event.data.network)) {
+    fail(`network/policy carries unknown policy ${JSON.stringify(event.data.network)}`)
+  }
 }
 
-/** Install validation for loaded and newly appended sandbox modes. */
+/** Install validation for loaded and newly appended sandbox modes and network policies. */
 const install: InvariantInstaller = Object.assign((ctx: Context, fail: InvariantFailure) => {
   for (const session of ctx.sessions.list()) {
     for (const event of session.events) validateEvent(event, fail)

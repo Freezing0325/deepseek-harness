@@ -19,7 +19,9 @@
  */
 
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
-import type { SandboxMode } from '@deepseek-ai/dsh-sandbox'
+import { NETWORK_POLICIES, type NetworkPolicy, type SandboxMode } from '@deepseek-ai/dsh-sandbox'
+
+export { NETWORK_POLICIES }
 
 declare module '@deepseek-ai/dsh-session/types' {
   interface SessionEventMap {
@@ -32,6 +34,18 @@ declare module '@deepseek-ai/dsh-session/types' {
      */
     'sandbox/mode': {
       mode: SandboxMode
+      /** Marks an override seeded into a child at delegation. */
+      source?: 'delegation'
+    }
+    /**
+     * The session's outbound-network policy was switched — log-only, durable,
+     * replayable, never in the model transcript (the `sandbox/mode` pattern).
+     * The LAST such event is the session's override
+     * ({@link effectiveNetworkPolicy}); absent means the deployment default.
+     * `source: 'delegation'` marks an override seeded into a child.
+     */
+    'network/policy': {
+      network: NetworkPolicy
       /** Marks an override seeded into a child at delegation. */
       source?: 'delegation'
     }
@@ -58,6 +72,22 @@ export function effectiveSandboxMode(events: readonly SessionEvent[]): SandboxMo
 }
 
 /**
+ * The session's network-policy override: the last `network/policy` event in
+ * the log, or undefined when the session never switched (callers apply the
+ * deployment default; absent means `allow`). The pure fold — replaying the
+ * log IS the state.
+ * @param events - session events in log order (other event types are skipped).
+ * @returns the policy of the last switch event, or undefined without one.
+ */
+export function effectiveNetworkPolicy(events: readonly SessionEvent[]): NetworkPolicy | undefined {
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const event = events[index] as SessionEvent
+    if (event.type === 'network/policy') return event.data.network
+  }
+  return undefined
+}
+
+/**
  * THE write path for a session's sandbox-mode override: appends exactly one
  * `sandbox/mode` event — the switch IS its event; nothing mutates mode state
  * out of band. Takes effect on the session's next confined call (bash or fs)
@@ -68,4 +98,17 @@ export function effectiveSandboxMode(events: readonly SessionEvent[]): SandboxMo
  */
 export function setSandboxMode(session: Session, mode: SandboxMode): void {
   session.append('sandbox/mode', { mode })
+}
+
+/**
+ * THE write path for a session's network-policy override: appends exactly one
+ * `network/policy` event — the switch IS its event; nothing mutates policy
+ * state out of band. Takes effect on the session's next network-bearing
+ * capability call (the web tools fold on every read).
+ * @param session - the session the override belongs to.
+ * @param network - the policy every subsequent network-bearing call in this
+ *   session runs under (until the next switch).
+ */
+export function setNetworkPolicy(session: Session, network: NetworkPolicy): void {
+  session.append('network/policy', { network })
 }

@@ -16,12 +16,24 @@ function modeEvent(mode: string): SessionEvent {
   return { type: 'sandbox/mode', seq: 0, time: 0, data: { mode } } as SessionEvent
 }
 
+function networkEvent(network: string): SessionEvent {
+  return { type: 'network/policy', seq: 0, time: 0, data: { network } } as SessionEvent
+}
+
 describe('sandbox-policy invariants', () => {
   it.each(['read-only', 'workspace-write', 'danger-full-access'])(
     'accepts the durable %s mode',
     async (mode) => {
       const ctx = await setup()
       expect(() => { ctx.emit('session/event', {} as Session, modeEvent(mode)) }).not.toThrow()
+    },
+  )
+
+  it.each(['allow', 'deny'])(
+    'accepts the durable %s network policy',
+    async (network) => {
+      const ctx = await setup()
+      expect(() => { ctx.emit('session/event', {} as Session, networkEvent(network)) }).not.toThrow()
     },
   )
 
@@ -39,10 +51,28 @@ describe('sandbox-policy invariants', () => {
       .toThrow(new InvariantError('@deepseek-ai/dsh-sandbox-policy', 'sandbox/mode carries unknown mode "host-root"'))
   })
 
+  it('rejects and attributes an unknown durable network policy', async () => {
+    const ctx = await setup()
+    expect(() => { ctx.emit('session/event', {} as Session, networkEvent('maybe')) })
+      .toThrow(new InvariantError('@deepseek-ai/dsh-sandbox-policy', 'network/policy carries unknown policy "maybe"'))
+  })
+
   it('rejects an unknown mode already present on late registration', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
     ctx.sessions.create().append('sandbox/mode', { mode: 'host-root' as never })
+    await ctx.plugin(InvariantRegistry, { enabled: true })
+
+    await expect(ctx.plugin(SandboxPolicyInvariant).then(() => undefined)).rejects.toMatchObject({
+      code: 'INVARIANT',
+      packageName: '@deepseek-ai/dsh-sandbox-policy',
+    })
+  })
+
+  it('rejects an unknown network policy already present on late registration', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    ctx.sessions.create().append('network/policy', { network: 'maybe' as never })
     await ctx.plugin(InvariantRegistry, { enabled: true })
 
     await expect(ctx.plugin(SandboxPolicyInvariant).then(() => undefined)).rejects.toMatchObject({
