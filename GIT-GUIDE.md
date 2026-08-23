@@ -10,7 +10,7 @@
 | `master` | 和官方完全一致（纯净版） | 对比官方用，**永远不要在上面提交** |
 | `my-custom` | 官方 + 你的本地补丁（默认分支） | 你所有的工作都在这 |
 
-你的本地补丁就是这些提交（当前有 10 个）：
+你的本地补丁就是这些提交（当前有 13 个）：
 
 ```
 feat(sandbox-policy): 独立网络策略（allow/deny）
@@ -20,6 +20,8 @@ chore(tool-cordis): 目录同步
 fix(apiproxy): 权限提醒（3 个提交）
 fix(directory-picker-native): UTF-16 修复
 docs / chore(i18n): 文档与配对记录
+fix(tests): 适配上游 API（queries 参数、标题 env）
+docs: 一键更新脚本 + git 指南
 ```
 
 ## 二、查看状态（最常用的三条）
