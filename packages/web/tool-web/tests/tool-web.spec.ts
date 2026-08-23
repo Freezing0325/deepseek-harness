@@ -979,7 +979,7 @@ describe('network policy gate', () => {
   it('allows web_search by default and reaches the provider', async () => {
     const { ctx, fiber } = await mountWithNetworkPolicy()
     const out = await ctx.tools.execute({
-      signal: testToolSignal, callId: CallId('net-search-default'), name: 'web_search', arguments: { query: 'q' }, agent: sessionAgent(),
+      signal: testToolSignal, callId: CallId('net-search-default'), name: 'web_search', arguments: { queries: ['q'] }, agent: sessionAgent(),
     })
     expect(out.isError).toBe(false)
     await fiber.dispose()
@@ -988,7 +988,7 @@ describe('network policy gate', () => {
   it('refuses web_search and web_fetch under a deny session override before touching the provider', async () => {
     const { ctx, fiber } = await mountWithNetworkPolicy()
     const search = await ctx.tools.execute({
-      signal: testToolSignal, callId: CallId('net-search-deny'), name: 'web_search', arguments: { query: 'q' }, agent: sessionAgent('deny'),
+      signal: testToolSignal, callId: CallId('net-search-deny'), name: 'web_search', arguments: { queries: ['q'] }, agent: sessionAgent('deny'),
     })
     expect(search.isError).toBe(true)
     expect(search.error?.message).toContain('network access is denied')
@@ -1003,7 +1003,7 @@ describe('network policy gate', () => {
   it('refuses web_search when the deployment default network policy is deny', async () => {
     const { ctx, fiber } = await mountWithNetworkPolicy('deny')
     const out = await ctx.tools.execute({
-      signal: testToolSignal, callId: CallId('net-search-config'), name: 'web_search', arguments: { query: 'q' }, agent: sessionAgent(),
+      signal: testToolSignal, callId: CallId('net-search-config'), name: 'web_search', arguments: { queries: ['q'] }, agent: sessionAgent(),
     })
     expect(out.isError).toBe(true)
     expect(out.error?.message).toContain('network access is denied')
@@ -1013,7 +1013,7 @@ describe('network policy gate', () => {
   it('lets an allow session override pass under a deny deployment default', async () => {
     const { ctx, fiber } = await mountWithNetworkPolicy('deny')
     const out = await ctx.tools.execute({
-      signal: testToolSignal, callId: CallId('net-search-allow-override'), name: 'web_search', arguments: { query: 'q' }, agent: sessionAgent('allow'),
+      signal: testToolSignal, callId: CallId('net-search-allow-override'), name: 'web_search', arguments: { queries: ['q'] }, agent: sessionAgent('allow'),
     })
     expect(out.isError).toBe(false)
     await fiber.dispose()

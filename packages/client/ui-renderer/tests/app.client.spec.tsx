@@ -68,6 +68,7 @@ describe('buildRenderApp', () => {
 
   it('flashes the tab title while a session waits on the user and stops when it is gone', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    vi.stubEnv('DSH_CLIENT_TITLE', 'Product')
     document.title = 'Product'
     Object.defineProperty(document, 'hidden', { configurable: true, value: true })
     const b = await bench()

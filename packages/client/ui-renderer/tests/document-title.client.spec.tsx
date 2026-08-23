@@ -45,6 +45,7 @@ describe('DocumentTitle', () => {
 describe('DocumentTitle pending-interaction attention', () => {
   it('alternates the attention title only while the tab is hidden and pending', () => {
     vi.useFakeTimers()
+    vi.stubEnv('DSH_CLIENT_TITLE', 'DeepSeek Harness')
     document.title = 'DeepSeek Harness'
     setHidden(true)
     render(<DocumentTitle pendingInteraction />)
@@ -58,6 +59,7 @@ describe('DocumentTitle pending-interaction attention', () => {
 
   it('restores the projected title when the tab becomes visible', () => {
     vi.useFakeTimers()
+    vi.stubEnv('DSH_CLIENT_TITLE', 'DeepSeek Harness')
     document.title = 'DeepSeek Harness'
     setHidden(true)
     render(<DocumentTitle title="First title" pendingInteraction />)
@@ -72,6 +74,7 @@ describe('DocumentTitle pending-interaction attention', () => {
 
   it('stops flashing and restores the projected title when nothing is pending', () => {
     vi.useFakeTimers()
+    vi.stubEnv('DSH_CLIENT_TITLE', 'DeepSeek Harness')
     document.title = 'DeepSeek Harness'
     setHidden(true)
     const mounted = render(<DocumentTitle pendingInteraction />)
@@ -85,6 +88,7 @@ describe('DocumentTitle pending-interaction attention', () => {
 
   it('does not flash while the tab is visible', () => {
     vi.useFakeTimers()
+    vi.stubEnv('DSH_CLIENT_TITLE', 'DeepSeek Harness')
     document.title = 'DeepSeek Harness'
     setHidden(false)
     render(<DocumentTitle pendingInteraction />)
