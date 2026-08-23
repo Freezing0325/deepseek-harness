@@ -143,6 +143,16 @@ describe('installPermissionNotify', () => {
     expect(args).toContain('chrome')
   })
 
+  it('default flash windows are browsers only, never unrelated terminals', () => {
+    // The alert fires from the web host (the dsh UI lives in a browser tab);
+    // flashing terminal windows would disturb unrelated console work such as
+    // a Windows Terminal running another script.
+    const terminals = ['windowsTerminal', 'mintty', 'wezterm-gui', 'alacritty', 'conemu64', 'cmd', 'conhost']
+    expect(DEFAULT_FLASH_WINDOWS).toEqual(expect.not.arrayContaining(terminals))
+    expect(DEFAULT_FLASH_WINDOWS).toContain('chrome')
+    expect(DEFAULT_FLASH_WINDOWS).toContain('msedge')
+  })
+
   it('never throws on a failed spawn', () => {
     const spawn = vi.fn(() => { throw new Error('spawn failed') })
     const handle = installPermissionNotify(

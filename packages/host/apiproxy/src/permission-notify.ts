@@ -32,7 +32,7 @@ export const PERMISSION_NOTIFY_NAMESPACE = settingsNamespace('permission-notify'
 export interface PermissionNotifySettings {
   /** Master switch; false silences every channel. */
   enabled: boolean
-  /** QQ-style taskbar flash on the dsh browser/terminal windows. */
+  /** QQ-style taskbar flash on the dsh browser windows. */
   flash: boolean
   /** System exclamation chime, or the configured {@link soundFile}. */
   sound: boolean
@@ -40,14 +40,19 @@ export interface PermissionNotifySettings {
   popup: boolean
   /** Optional .wav path played instead of the system chime; empty = system sound. */
   soundFile: string
-  /** Process names whose windows flash; empty = the built-in browser/terminal list. */
+  /** Process names whose windows flash; empty = the built-in browser list. */
   flashWindows: string[]
 }
 
-/** Process names the flash step targets when {@link PermissionNotifySettings.flashWindows} is empty. */
+/**
+ * Process names the flash step targets when {@link PermissionNotifySettings.flashWindows} is empty.
+ * Browsers only: the alert fires from the web host (apiproxy), where the dsh
+ * UI lives in a browser tab — a CLI run never passes through this module, so
+ * flashing terminal windows would only disturb unrelated console windows
+ * (e.g. a Windows Terminal running an unrelated script).
+ */
 export const DEFAULT_FLASH_WINDOWS = [
   'chrome', 'msedge', 'firefox', 'brave', 'opera', 'vivaldi',
-  'windowsTerminal', 'mintty', 'wezterm-gui', 'alacritty', 'conemu64',
 ]
 
 /** The composed defaults; every field is always present. */

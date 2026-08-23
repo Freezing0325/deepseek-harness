@@ -71,7 +71,10 @@ public class WinFlash {
 
     $targets = @($FlashWindows -split ',' | ForEach-Object { $_.Trim().ToLower() } | Where-Object { $_ -ne '' })
     if ($targets.Count -eq 0) {
-      $targets = @('chrome','msedge','firefox','brave','opera','vivaldi','windowsTerminal','mintty','wezterm-gui','alacritty','conemu64')
+      # Browsers only: the alert fires from the web host, where the dsh UI
+      # lives in a browser tab; terminal windows (WindowsTerminal, mintty,
+      # wezterm, ...) belong to unrelated console work and must not flash.
+      $targets = @('chrome','msedge','firefox','brave','opera','vivaldi')
     }
 
     $fg  = [WinFlash]::GetForegroundWindow()
