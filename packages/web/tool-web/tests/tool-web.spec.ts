@@ -2,6 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import TurndownService from 'turndown'
 import { CallId } from '@deepseek-ai/dsh-llm'
+import type { Agent } from '@deepseek-ai/dsh-agent'
+import { Session, SessionId } from '@deepseek-ai/dsh-session'
+import SandboxPolicyService, { setNetworkPolicy } from '@deepseek-ai/dsh-sandbox-policy'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { type ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import WebRuntime from '@deepseek-ai/dsh-web'
@@ -941,5 +944,78 @@ describe('fetchMaxOutputChars is plugin config', () => {
     await ctx.plugin(WebRuntime, {})
     await expect(ctx.plugin(ToolWeb, { fetchMaxOutputChars: value }))
       .rejects.toThrow(/tool-web: fetchMaxOutputChars must be a positive integer/)
+  })
+})
+
+describe('network policy gate', () => {
+  async function mountWithNetworkPolicy(networkAccess?: 'allow' | 'deny'): Promise<{ ctx: Context; fiber: Awaited<ReturnType<Context['plugin']>> }> {
+    const ctx = new Context()
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(SandboxPolicyService, { mode: 'workspace-write', ...networkAccess !== undefined ? { networkAccess } : {} })
+    await ctx.plugin(WebRuntime, { searchProvider: 'stub-search', fetchProvider: 'stub-fetch' })
+    ctx.web.registerSearchProvider(searchProvider({ sources: [], truncated: false }))
+    ctx.web.registerFetchProvider({
+      id: 'stub-fetch',
+      available: () => available,
+      fetch: (request: { url: string }) => Promise.resolve({
+        url: request.url,
+        statusCode: 200,
+        body: { kind: 'text' as const, content: 'ok' },
+        truncated: false,
+      }),
+    })
+    const fiber = await ctx.plugin(ToolWeb)
+    return { ctx, fiber }
+  }
+
+  /** An agent whose session carries the given network override (or none). */
+  function sessionAgent(network?: 'allow' | 'deny'): Agent {
+    const session = Session.create(SessionId('net-sess'))
+    if (network !== undefined) setNetworkPolicy(session, network)
+    return { session } as unknown as Agent
+  }
+
+  it('allows web_search by default and reaches the provider', async () => {
+    const { ctx, fiber } = await mountWithNetworkPolicy()
+    const out = await ctx.tools.execute({
+      signal: testToolSignal, callId: CallId('net-search-default'), name: 'web_search', arguments: { query: 'q' }, agent: sessionAgent(),
+    })
+    expect(out.isError).toBe(false)
+    await fiber.dispose()
+  })
+
+  it('refuses web_search and web_fetch under a deny session override before touching the provider', async () => {
+    const { ctx, fiber } = await mountWithNetworkPolicy()
+    const search = await ctx.tools.execute({
+      signal: testToolSignal, callId: CallId('net-search-deny'), name: 'web_search', arguments: { query: 'q' }, agent: sessionAgent('deny'),
+    })
+    expect(search.isError).toBe(true)
+    expect(search.error?.message).toContain('network access is denied')
+    const fetch = await ctx.tools.execute({
+      signal: testToolSignal, callId: CallId('net-fetch-deny'), name: 'web_fetch', arguments: { url: 'https://a.test' }, agent: sessionAgent('deny'),
+    })
+    expect(fetch.isError).toBe(true)
+    expect(fetch.error?.message).toContain('network access is denied')
+    await fiber.dispose()
+  })
+
+  it('refuses web_search when the deployment default network policy is deny', async () => {
+    const { ctx, fiber } = await mountWithNetworkPolicy('deny')
+    const out = await ctx.tools.execute({
+      signal: testToolSignal, callId: CallId('net-search-config'), name: 'web_search', arguments: { query: 'q' }, agent: sessionAgent(),
+    })
+    expect(out.isError).toBe(true)
+    expect(out.error?.message).toContain('network access is denied')
+    await fiber.dispose()
+  })
+
+  it('lets an allow session override pass under a deny deployment default', async () => {
+    const { ctx, fiber } = await mountWithNetworkPolicy('deny')
+    const out = await ctx.tools.execute({
+      signal: testToolSignal, callId: CallId('net-search-allow-override'), name: 'web_search', arguments: { query: 'q' }, agent: sessionAgent('allow'),
+    })
+    expect(out.isError).toBe(false)
+    await fiber.dispose()
   })
 })

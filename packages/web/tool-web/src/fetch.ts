@@ -13,6 +13,7 @@ import type { GenericCallView, JsonValue, ToolResult, WebFetchResultView } from 
 import type { WebFetchBody, WebFetchResult } from '@deepseek-ai/dsh-web'
 import { assertNever } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-system-prompt'
+import { assertNetworkAllowed } from './network.ts'
 
 /**
  * The shared HTML→markdown converter: turndown over its bundled domino DOM,
@@ -477,6 +478,7 @@ export function applyWebFetchTool(ctx: Context, timeoutMs: number, maxOutputChar
     // Provider reads do not mutate parent-agent state.
     isConcurrencySafe: () => true,
     async execute(args, exec) {
+      assertNetworkAllowed(ctx, exec)
       const input = parseFetchArgs(args)
       const result = await ctx.web.fetch(
         { url: input.url },

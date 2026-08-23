@@ -10,6 +10,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, JsonValue, ToolResult, WebSearchResultView, WebSource } from '@deepseek-ai/dsh-tools'
 import type { WebSearchResult, WebSearchSource } from '@deepseek-ai/dsh-web'
 import type {} from '@deepseek-ai/dsh-system-prompt'
+import { assertNetworkAllowed } from './network.ts'
 
 /**
  * Default upper bound on returned sources (the `searchMaxResults` config).
@@ -362,6 +363,7 @@ export function applyWebSearchTool(
     // Provider reads do not mutate parent-agent state.
     isConcurrencySafe: () => true,
     async execute(args, exec) {
+      assertNetworkAllowed(ctx, exec)
       const queries = parseSearchArgs(args, maxQueries)
       const result = await runSearchQueries(ctx, queries, maxResults, exec.signal)
       return {
