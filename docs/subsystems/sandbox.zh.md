@@ -42,11 +42,26 @@ type SandboxEnforcement = 'full' | 'partial'
 
 完整执行策略会按每次能力调用解析并携带。它包括 `danger-full-access`，因此消费方可以只解析一次策略，再决定是否绕过约束。普通工具调用从调用会话的不可变 cwd 派生 `workspaceRoot`；部署配置是没有 agent（智能体）时的回退值。root 会先按文件系统语义规范化，再做词法规范化，因此包含 `symlink/..` 的 cwd 会标识 spawn 出的进程实际运行的目录。
 
+策略还携带独立的出站网络轴。`allow`（默认）说明文件后端不拦截套接字；`deny` 告诉涉及网络的能力（web 工具）拒绝出站访问。进程沙箱后端从不强制这一轴——它由消费者负责执行。
+
 ```ts type-equiv
 /**
- * The complete file-effect policy resolved for one capability call. The root
- * is carried even under modes that do not consume it so callers can resolve
- * policy once before choosing the enforcement path.
+ * The outbound-network policy for one capability call — an INDEPENDENT axis
+ * from the file-effect {@link SandboxMode}, so a deployment can allow network
+ * access while keeping file writes confined (and vice versa). `allow` is the
+ * default: the file-sandbox backends do not gate sockets, so outbound
+ * HTTP(S)/TCP/DNS is permitted unless a consumer decides otherwise. `deny`
+ * means the consumer refuses network-bearing operations (e.g. the web tools).
+ * Enforcement is consumer-owned: this seam only carries the resolved policy.
+ */
+type NetworkPolicy = 'allow' | 'deny'
+```
+
+```ts type-equiv
+/**
+ * The complete resolved policy for one capability call. The root is carried
+ * even under modes that do not consume it so callers can resolve policy once
+ * before choosing the enforcement path.
  */
 interface SandboxExecutionPolicy {
   /** The file-effect mode this execution runs under. */
@@ -61,10 +76,17 @@ interface SandboxExecutionPolicy {
    * for agentless calls, which fall back to per-call backend state.
    */
   sessionId?: SessionId
+  /**
+   * The outbound-network policy this call runs under. Absent means `allow`
+   * (the file backends do not restrict sockets); consumers that refuse
+   * network-bearing operations when the policy is `deny` treat an absent
+   * value as `allow`.
+   */
+  network?: NetworkPolicy
 }
 ```
 
-`ctx.sandboxPolicy.resolve()` 接收活跃会话；对于已批准的重试，还接收显式模式。该服务拥有优先级与 root 回退规则，使 bash 和 fs 不必重复实现。
+`ctx.sandboxPolicy.resolve()` 接收活跃会话；对于已批准的重试，还接收显式模式或网络策略。该服务拥有优先级与 root 回退规则，使 bash 和 fs 不必重复实现。
 
 ```ts type-equiv
 /** Inputs that select the sandbox policy for one capability call. */
@@ -73,6 +95,8 @@ interface SandboxPolicyRequest {
   session?: Session
   /** Explicit approved mode override, which outranks session policy. */
   mode?: SandboxMode
+  /** Explicit approved network-policy override, which outranks session policy. */
+  network?: NetworkPolicy
 }
 ```
 
@@ -197,12 +221,13 @@ The sandbox-policy service (`ctx.sandboxPolicy`). Owns the deployment default mo
 ```ts cordis-catalog
 /**
  * Resolve the complete policy for one capability call. An approved explicit
- * mode outranks the session's last `sandbox/mode` event, which outranks the
- * deployment default. A session cwd is its workspace-write boundary; the
- * configured root is the fallback for agentless calls and sessions without a
- * cwd.
- * @param request - optional session and approved mode override.
- * @returns the fully resolved per-call mode and absolute workspace root.
+ * mode/network outranks the session's last `sandbox/mode`/`network/policy`
+ * event, which outranks the deployment default. A session cwd is its
+ * workspace-write boundary; the configured root is the fallback for
+ * agentless calls and sessions without a cwd.
+ * @param request - optional session and approved mode/network overrides.
+ * @returns the fully resolved per-call mode, network policy, and absolute
+ *   workspace root.
  */
 resolve(request: SandboxPolicyRequest = {}): SandboxExecutionPolicy
 
@@ -212,6 +237,14 @@ resolve(request: SandboxPolicyRequest = {}): SandboxExecutionPolicy
  * @returns the last logged mode, or `undefined` without one.
  */
 overrideOf(session: Session): SandboxMode | undefined
+
+/**
+ * Read the session's network-policy override without applying the
+ * deployment default.
+ * @param session - session whose log supplies the override.
+ * @returns the last logged policy, or `undefined` without one.
+ */
+networkOverrideOf(session: Session): NetworkPolicy | undefined
 ```
 
 Types: [Session](session.zh.md)

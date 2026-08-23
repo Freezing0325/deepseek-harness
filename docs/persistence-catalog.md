@@ -498,6 +498,29 @@ Source: [`packages/llm/llm-retry/src/types.ts:9`](../packages/llm/llm-retry/src/
 
 Source: [`packages/llm/llm-retry/src/types.ts:11`](../packages/llm/llm-retry/src/types.ts)
 
+### `network/*`
+
+<a id="networkpolicy--log-only"></a>
+
+#### `network/policy` — log-only
+
+```ts persistence-catalog
+/**
+ * The session's outbound-network policy was switched — log-only, durable,
+ * replayable, never in the model transcript (the `sandbox/mode` pattern).
+ * The LAST such event is the session's override
+ * ({@link effectiveNetworkPolicy}); absent means the deployment default.
+ * `source: 'delegation'` marks an override seeded into a child.
+ */
+'network/policy': {
+  network: NetworkPolicy
+  /** Marks an override seeded into a child at delegation. */
+  source?: 'delegation'
+}
+```
+
+Source: [`packages/sandbox/sandbox-policy/src/session-mode.ts:47`](../packages/sandbox/sandbox-policy/src/session-mode.ts)
+
 ### `permission/*`
 
 <a id="permissionpreset--log-only"></a>
@@ -584,7 +607,7 @@ Source: [`packages/core/session/src/types.ts:308`](../packages/core/session/src/
 }
 ```
 
-Source: [`packages/sandbox/sandbox-policy/src/session-mode.ts:33`](../packages/sandbox/sandbox-policy/src/session-mode.ts)
+Source: [`packages/sandbox/sandbox-policy/src/session-mode.ts:35`](../packages/sandbox/sandbox-policy/src/session-mode.ts)
 
 ### `schedule/*`
 

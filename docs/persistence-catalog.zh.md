@@ -500,6 +500,29 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 来源：[`packages/llm/llm-retry/src/types.ts:11`](../packages/llm/llm-retry/src/types.ts)
 
+### `network/*`
+
+<a id="networkpolicy--log-only"></a>
+
+#### `network/policy` — log-only
+
+```ts persistence-catalog
+/**
+ * The session's outbound-network policy was switched — log-only, durable,
+ * replayable, never in the model transcript (the `sandbox/mode` pattern).
+ * The LAST such event is the session's override
+ * ({@link effectiveNetworkPolicy}); absent means the deployment default.
+ * `source: 'delegation'` marks an override seeded into a child.
+ */
+'network/policy': {
+  network: NetworkPolicy
+  /** Marks an override seeded into a child at delegation. */
+  source?: 'delegation'
+}
+```
+
+来源：[`packages/sandbox/sandbox-policy/src/session-mode.ts:47`](../packages/sandbox/sandbox-policy/src/session-mode.ts)
+
 ### `permission/*`
 
 <a id="permissionpreset--log-only"></a>

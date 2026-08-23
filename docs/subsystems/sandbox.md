@@ -42,11 +42,26 @@ type SandboxEnforcement = 'full' | 'partial'
 
 The complete execution policy is resolved and carried per capability call. It includes `danger-full-access` so a consumer can resolve policy once before deciding whether to bypass confinement. Normal tool calls derive `workspaceRoot` from the calling session's immutable cwd; deployment configuration is the agentless fallback. The root is canonicalized with filesystem semantics before lexical normalization, so a cwd containing `symlink/..` identifies the directory where a spawned process actually runs.
 
+The policy also carries the independent outbound-network axis. `allow` (the default) states that the file backends do not gate sockets; `deny` tells network-bearing consumers (the web tools) to refuse outbound access. The process-sandbox backends never enforce this axis — it is consumer-owned.
+
 ```ts type-equiv
 /**
- * The complete file-effect policy resolved for one capability call. The root
- * is carried even under modes that do not consume it so callers can resolve
- * policy once before choosing the enforcement path.
+ * The outbound-network policy for one capability call — an INDEPENDENT axis
+ * from the file-effect {@link SandboxMode}, so a deployment can allow network
+ * access while keeping file writes confined (and vice versa). `allow` is the
+ * default: the file-sandbox backends do not gate sockets, so outbound
+ * HTTP(S)/TCP/DNS is permitted unless a consumer decides otherwise. `deny`
+ * means the consumer refuses network-bearing operations (e.g. the web tools).
+ * Enforcement is consumer-owned: this seam only carries the resolved policy.
+ */
+type NetworkPolicy = 'allow' | 'deny'
+```
+
+```ts type-equiv
+/**
+ * The complete resolved policy for one capability call. The root is carried
+ * even under modes that do not consume it so callers can resolve policy once
+ * before choosing the enforcement path.
  */
 interface SandboxExecutionPolicy {
   /** The file-effect mode this execution runs under. */
@@ -61,10 +76,17 @@ interface SandboxExecutionPolicy {
    * for agentless calls, which fall back to per-call backend state.
    */
   sessionId?: SessionId
+  /**
+   * The outbound-network policy this call runs under. Absent means `allow`
+   * (the file backends do not restrict sockets); consumers that refuse
+   * network-bearing operations when the policy is `deny` treat an absent
+   * value as `allow`.
+   */
+  network?: NetworkPolicy
 }
 ```
 
-`ctx.sandboxPolicy.resolve()` accepts the active session and, for an approved retry, an explicit mode. The service owns precedence and root fallback so bash and fs do not repeat it.
+`ctx.sandboxPolicy.resolve()` accepts the active session and, for an approved retry, an explicit mode or network policy. The service owns precedence and root fallback so bash and fs do not repeat it.
 
 ```ts type-equiv
 /** Inputs that select the sandbox policy for one capability call. */
@@ -73,6 +95,8 @@ interface SandboxPolicyRequest {
   session?: Session
   /** Explicit approved mode override, which outranks session policy. */
   mode?: SandboxMode
+  /** Explicit approved network-policy override, which outranks session policy. */
+  network?: NetworkPolicy
 }
 ```
 
@@ -195,12 +219,13 @@ The sandbox-policy service (`ctx.sandboxPolicy`). Owns the deployment default mo
 ```ts cordis-catalog
 /**
  * Resolve the complete policy for one capability call. An approved explicit
- * mode outranks the session's last `sandbox/mode` event, which outranks the
- * deployment default. A session cwd is its workspace-write boundary; the
- * configured root is the fallback for agentless calls and sessions without a
- * cwd.
- * @param request - optional session and approved mode override.
- * @returns the fully resolved per-call mode and absolute workspace root.
+ * mode/network outranks the session's last `sandbox/mode`/`network/policy`
+ * event, which outranks the deployment default. A session cwd is its
+ * workspace-write boundary; the configured root is the fallback for
+ * agentless calls and sessions without a cwd.
+ * @param request - optional session and approved mode/network overrides.
+ * @returns the fully resolved per-call mode, network policy, and absolute
+ *   workspace root.
  */
 resolve(request: SandboxPolicyRequest = {}): SandboxExecutionPolicy
 
@@ -210,6 +235,14 @@ resolve(request: SandboxPolicyRequest = {}): SandboxExecutionPolicy
  * @returns the last logged mode, or `undefined` without one.
  */
 overrideOf(session: Session): SandboxMode | undefined
+
+/**
+ * Read the session's network-policy override without applying the
+ * deployment default.
+ * @param session - session whose log supplies the override.
+ * @returns the last logged policy, or `undefined` without one.
+ */
+networkOverrideOf(session: Session): NetworkPolicy | undefined
 ```
 
 Types: [Session](session.md)
