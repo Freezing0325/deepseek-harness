@@ -1158,21 +1158,32 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [],
       },
       {
+        signature: 'readonly defaultNetwork: NetworkPolicy',
+        description: 'The deployment default network policy — the fallback beneath a session override.',
+        parameters: [],
+      },
+      {
         signature: 'readonly workspaceRoot: string',
         description: 'The absolute `workspace-write` fallback root for calls without a session cwd.',
         parameters: [],
       },
       {
         signature: 'resolve(request: SandboxPolicyRequest = {}): SandboxExecutionPolicy',
-        description: 'Resolve the complete policy for one capability call. An approved explicit mode outranks the session\'s last `sandbox/mode` event, which outranks the deployment default. A session cwd is its workspace-write boundary; the configured root is the fallback for agentless calls and sessions without a cwd.',
-        parameters: [{ name: 'request', description: 'optional session and approved mode override.' }],
-        returns: 'the fully resolved per-call mode and absolute workspace root.',
+        description: 'Resolve the complete policy for one capability call. An approved explicit mode/network outranks the session\'s last `sandbox/mode`/`network/policy` event, which outranks the deployment default. A session cwd is its workspace-write boundary; the configured root is the fallback for agentless calls and sessions without a cwd.',
+        parameters: [{ name: 'request', description: 'optional session and approved mode/network overrides.' }],
+        returns: 'the fully resolved per-call mode, network policy, and absolute workspace root.',
       },
       {
         signature: 'overrideOf(session: Session): SandboxMode | undefined',
         description: 'Read the session override without applying the deployment default.',
         parameters: [{ name: 'session', description: 'session whose log supplies the override.' }],
         returns: 'the last logged mode, or `undefined` without one.',
+      },
+      {
+        signature: 'networkOverrideOf(session: Session): NetworkPolicy | undefined',
+        description: 'Read the session\'s network-policy override without applying the deployment default.',
+        parameters: [{ name: 'session', description: 'session whose log supplies the override.' }],
+        returns: 'the last logged policy, or `undefined` without one.',
       },
     ],
   },
@@ -3798,6 +3809,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ModelModalityMap {\n    text: \'text\';\n    image: \'image\';\n}',
   },
   {
+    name: 'NetworkPolicy',
+    declaration: 'export type NetworkPolicy = \'allow\' | \'deny\';',
+  },
+  {
     name: 'ObjectJsonSchema',
     declaration: 'export type ObjectJsonSchema = JsonSchemaNode & {\n    type: \'object\';\n};',
   },
@@ -4003,7 +4018,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SandboxExecutionPolicy',
-    declaration: 'export interface SandboxExecutionPolicy {\n    mode: SandboxMode;\n    workspaceRoot: string;\n    sessionId?: SessionId;\n}',
+    declaration: 'export interface SandboxExecutionPolicy {\n    mode: SandboxMode;\n    workspaceRoot: string;\n    sessionId?: SessionId;\n    network?: NetworkPolicy;\n}',
   },
   {
     name: 'SandboxMode',
@@ -4015,7 +4030,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SandboxPolicyRequest',
-    declaration: 'export interface SandboxPolicyRequest {\n    session?: Session;\n    mode?: SandboxMode;\n}',
+    declaration: 'export interface SandboxPolicyRequest {\n    session?: Session;\n    mode?: SandboxMode;\n    network?: NetworkPolicy;\n}',
   },
   {
     name: 'SaveImageAttachment',
