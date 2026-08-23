@@ -59,7 +59,7 @@ describe('installPermissionNotify', () => {
     expect(spawn).not.toHaveBeenCalled()
   })
 
-  it('spawns detached powershell with the script path and env payload', () => {
+  it('spawns a plain powershell with the script path and env payload', () => {
     const { handle, call } = harness()
     handle.notify({ toolName: 'bash', reason: 'escalation' })
 
@@ -72,9 +72,12 @@ describe('installPermissionNotify', () => {
     expect(args).toContain('-Sound')
     expect(args).not.toContain('-Popup')
     expect(args).toContain(DEFAULT_FLASH_WINDOWS.join(','))
-    expect(options.detached).toBe(true)
+    // Regression guard: `detached`/`windowsHide` make powershell.exe exit
+    // without running the script under the restricted-token sandbox, so the
+    // child must be spawned as a plain `stdio: 'ignore'` process.
+    expect(options.detached).toBeUndefined()
+    expect(options.windowsHide).toBeUndefined()
     expect(options.stdio).toBe('ignore')
-    expect(options.windowsHide).toBe(true)
     const env = options.env as Record<string, string>
     expect(env.DSH_NOTIFY_TOOL).toBe('bash')
     expect(env.DSH_NOTIFY_MESSAGE).toContain('bash')

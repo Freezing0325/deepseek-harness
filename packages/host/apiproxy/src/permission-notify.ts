@@ -4,10 +4,10 @@
  * The approval badge in the Web UI is quiet by design; a user working in
  * another window misses it and the agent stalls. This module ports the Claude
  * Code notification recipe (taskbar flash + chime) to the host side: on every
- * broadcast `approval/requested` the proxy spawns a detached PowerShell child
- * (win32 only) that flashes the dsh browser/terminal taskbar icons and plays a
- * sound. Everything is fire-and-forget — no output is captured, no handle is
- * kept — so an alert can never delay or fail the approval channel.
+ * broadcast `approval/requested` the proxy spawns a fire-and-forget PowerShell
+ * child (win32 only) that flashes the dsh browser/terminal taskbar icons and
+ * plays a sound. Everything is fire-and-forget — no output is captured, no
+ * handle is kept — so an alert can never delay or fail the approval channel.
  *
  * Behavior is read from the `permission-notify` settings namespace on each
  * request (hot-reloaded from the user document); off win32 the install is a
@@ -166,9 +166,13 @@ export function installPermissionNotify(
               : `工具 ${info.toolName} 请求权限：${info.reason}`,
             DSH_NOTIFY_TOOL: info.toolName,
           },
-          detached: true,
+          // Never pass `detached` or `windowsHide` here: under the harness's
+          // restricted-token sandbox those flags make powershell.exe exit
+          // silently (exit 0) without running the script, so the alert never
+          // fires. Plain `stdio: 'ignore'` + the script's own
+          // `-WindowStyle Hidden` argument stays quiet and actually executes;
+          // `unref()` keeps the host free of the child.
           stdio: 'ignore',
-          windowsHide: true,
         }).unref()
       } catch {
         // A missing powershell.exe or a failed spawn must never surface on
