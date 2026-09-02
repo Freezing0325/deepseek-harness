@@ -17,6 +17,7 @@ Two-sided BFF for Host Remote capabilities selected by this application. The Hos
 
 - [Use this package](#use-this-package)
 - [Forwarded Host events](#forwarded-host-events)
+- [Desktop alerts](#desktop-alerts)
 - [Build boundary](#build-boundary)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
@@ -47,6 +48,11 @@ The listener signature is not restated here. Each allowlisted event's Cordis `Ev
 The Host entry registers an independent allowlist listener set and queue for each Client stream. It rejects non-JSON ordinary-event arguments before enqueueing. For a waterfall, it projects only the top-level Agent identity and JSON request fields; a Client result must also be lossless JSON, while `next()` delegates to the following Host listener. Each scoped waterfall request must carry its routed Agent directly as `request.agent`; the Host rejects a missing or mismatched identity before forwarding. The source attaches all listeners synchronously before `ctx.typertGateway.registerRemoteEvents()` exposes Gateway's internal `$events` logical stream, so its first `ready` item proves that incremental delivery is active and carries the Host home for Client path display. Withdrawing the registration aborts active streams.
 
 The payload-free `schedule/changed` event invalidates Schedule task queries; Clients re-read after a notification and reconnect. The payload-free `permission-presets/catalog-changed` event invalidates the process catalog. A Client subscribes before its first `permissionPresets.catalog()` read and re-reads the complete snapshot after a notification; the event carries no catalog state and changes no Session sequence.
+
+<a id="desktop-alerts"></a>
+## Desktop alerts
+
+On win32 the Host additionally installs observer listeners over the forwarded user-attention events — `agent/status` (top-level running → idle), `approval/request`, and `user-questions/request` — that spawn a fire-and-forget PowerShell child (`scripts/desktop-notify.ps1`) flashing the dsh browser taskbar icons and playing a per-kind sound, so a user working in another window notices the quiet Web badges. Each observer announces and then delegates, so an alert can never stall or change the forwarded event semantics; a failed or missing PowerShell is swallowed by contract. Behavior reads the `desktop-notify` settings namespace per call (hot-reloaded; see `src/desktop-notify.ts` for the switches and defaults).
 
 <a id="build-boundary"></a>
 ## Build boundary

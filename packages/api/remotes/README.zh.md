@@ -17,6 +17,7 @@ kind: "package-reference"
 
 - [使用本包](#use-this-package)
 - [转发的 Host 事件](#forwarded-host-events)
+- [桌面提醒](#desktop-alerts)
 - [构建边界](#build-boundary)
 - [模型体验](#model-experience)
 - [已知限制与暂缓事项](#known-limitations-and-deferred-work)
@@ -47,6 +48,11 @@ Client 组合挂载 Office 转换、Commands、凭据、settings、Goal、Schedu
 Host entry 为每条 Client 流独立注册一组 allowlist listener 和一个队列，并在普通事件入队前拒绝非 JSON 参数。对于 waterfall，它只投影顶层 agent 身份与 JSON 请求字段；Client 结果也必须能无损表示为 JSON，而 `next()` 会委托给后续 Host listener。每个作用域 waterfall 请求都必须以 `request.agent` 直接携带路由所用的 agent；Host 会在转发前拒绝缺失或不匹配的身份。该 source 在 `ctx.typertGateway.registerRemoteEvents()` 暴露 Gateway 内部的 `$events` 逻辑流前同步挂好所有 listener，因此首个 `ready` 项既能证明增量投递已就绪，也会携带供 Client 显示路径的 Host home。撤回注册会中止活动流。
 
 无 payload 的 `schedule/changed` 事件使 Schedule 任务查询失效；Client 在收到通知及重连后重新读取。无 payload 的 `permission-presets/catalog-changed` 事件使进程目录失效。Client 在首次读取 `permissionPresets.catalog()` 前先订阅，并在通知后重新读取完整快照；该事件不携带目录状态，也不改变 Session 序号。
+
+<a id="desktop-alerts"></a>
+## 桌面提醒
+
+在 win32 上 Host 还会为三类用户注意力转发事件安装观察者监听——`agent/status`（顶层 running → idle）、`approval/request`、`user-questions/request`——触发 fire-and-forget PowerShell 子进程（`scripts/desktop-notify.ps1`）闪烁 dsh 浏览器任务栏图标并按类型播放提示音，让切到其它窗口的用户不会漏看安静的 Web 角标。每个观察者只提醒后继续委托，因此提醒永远不会阻塞或改变转发事件的语义；PowerShell 缺失或 spawn 失败按契约静默吞掉。行为逐次读取 `desktop-notify` settings namespace（热生效；开关与默认值见 `src/desktop-notify.ts`）。
 
 <a id="build-boundary"></a>
 ## 构建边界
