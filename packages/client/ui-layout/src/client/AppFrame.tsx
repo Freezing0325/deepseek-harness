@@ -91,6 +91,7 @@ function DragHandle(props: { side: 'sidebar' | 'details'; left: number; onStart:
 export function AppFrame({
   useStore,
   useSessions,
+  useSessionPendingInteraction,
   actions,
   renderSlot,
   SessionProvider,
@@ -105,6 +106,7 @@ export function AppFrame({
     const current = s.current
     return current === undefined ? undefined : s.byId[current]?.title
   })
+  const pendingInteraction = useSessionPendingInteraction(pending => pending.size > 0)
   const frameRef = useRef<HTMLDivElement | null>(null)
   const [viewport, setViewport] = useState(() => window.innerWidth)
 
@@ -182,6 +184,8 @@ export function AppFrame({
       data-dragging={dragging || undefined}
     >
       <DocumentTitle
+        attentionTitle={t('documentTitle.pending')}
+        pendingInteraction={pendingInteraction}
         productTitle={productTitle}
         {...documentTitle === undefined ? {} : { title: documentTitle }}
       />
