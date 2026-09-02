@@ -10,19 +10,19 @@
 | `master` | 和官方完全一致（纯净版） | 对比官方用，**永远不要在上面提交** |
 | `my-custom` | 官方 + 你的本地补丁（默认分支） | 你所有的工作都在这 |
 
-你的本地补丁就是这些提交（当前有 13 个）：
+你的本地补丁就是这些提交（当前有 10 个）：
 
 ```
-feat(sandbox-policy): 独立网络策略（allow/deny）
-feat(tool-web): 网络门禁
-feat(web): 标题待审批闪烁
-chore(tool-cordis): 目录同步
-fix(apiproxy): 权限提醒（3 个提交）
-fix(directory-picker-native): UTF-16 修复
-docs / chore(i18n): 文档与配对记录
-fix(tests): 适配上游 API（queries 参数、标题 env）
-docs: 一键更新脚本 + git 指南
+feat(api-remotes): 桌面提醒（审批/提问/任务完成，win32）
+feat(web): 标题待审批闪烁（ui-layout）
+fix(apiproxy): 权限提醒（3 个提交）+ 泛化 desktop-notify（2 个提交）
+docs / chore: 一键更新脚本 + git 指南（3 个提交）
 ```
+
+> 2026-09 更新说明：网络控制策略（sandbox 独立网络策略轴、tool-web 网络门禁、
+> 目录/文档同步，共 4 个提交）**已确认鸡肋并移除**——没有 UI/CLI 入口、默认 allow
+> 不改变任何行为，且横跨 sandbox/web/core 核心包、每次上游更新都冲突。
+> directory-picker 的 UTF-16 修复上游已自带同名修复，因此一并放弃。
 
 ## 二、查看状态（最常用的三条）
 
@@ -115,7 +115,9 @@ pnpm install                         # 官方可能改了依赖，装一下
 
 ## 七、当前进度（本次更新结果）
 
-- 官方版本：**0.1.1-rc.2**（master 已同步）
-- 本地补丁：**13 个**，全部重放到最新上游，无冲突残留
-- typecheck / 翻译配对 / 受影响包测试：全部通过
-- 启动器已同步修复：wrapper 加 `--no-open`（避免 `dsh web` 自开浏览器 + wrapper 再开一次的双开问题），详见 `~/.dsh/PATCHING.md`
+- 官方版本：**0.1.2-alpha.5**（master 已同步；0.1.1-rc.2 → 0.1.2 是大版本重构）
+- 本地补丁：**10 个**，全部按新架构重放/移植到最新上游，无冲突残留
+- 已移除：网络策略 4 个补丁（鸡肋）+ directory-picker 修复（上游已自带）
+- 桌面提醒 / 标题闪烁：按新架构移植（apiproxy → api-remotes，ui-renderer → ui-layout）
+- 启动器已同步修复：wrapper 加 `--no-open`（避免双开浏览器），并把 25 秒等待上限放宽到约 5 分钟（冷启动超过 25 秒不再误报失败）
+- typecheck / 受影响包测试：全部通过
