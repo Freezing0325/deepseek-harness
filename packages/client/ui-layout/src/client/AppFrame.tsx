@@ -131,11 +131,13 @@ export function AppFrame({
   useSessions,
   usePanelInfo,
   useFoldedLandscape,
+  useSessionPendingInteraction,
   actions,
   renderSlot,
   t,
 }: AppFrameProps) {
   const layoutInfo = useStore(state => state.layoutInfo)
+  const pendingInteraction = useSessionPendingInteraction(pending => pending.size > 0)
   const frameRef = useRef<HTMLDivElement | null>(null)
   const viewport = layoutInfo.viewportWidth
   const foldedLandscape = useFoldedLandscape(matches => matches)
@@ -305,6 +307,8 @@ export function AppFrame({
       data-animating={animateTracks || undefined}
     >
       <DocumentTitle
+        attentionTitle={t('documentTitle.pending')}
+        pendingInteraction={pendingInteraction}
         productTitle={productTitle}
         useSessions={useSessions}
         usePanelInfo={usePanelInfo}
