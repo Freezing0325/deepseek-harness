@@ -87,6 +87,11 @@
     - id: plugin-inventory
       name: '@deepseek-ai/dsh-host-plugin-inventory'
 
+    # Windows desktop alert for approval/question/task-complete: taskbar
+    # flash + chime on the dsh browser windows (win32 only, fire-and-forget).
+    - id: desktop-notify
+      name: '@deepseek-ai/dsh-host-desktop-notify'
+
     # Session commands, cold reads, and live control over Typert Remote.
     - id: session-controller
       name: '@deepseek-ai/dsh-api-session-controller'
