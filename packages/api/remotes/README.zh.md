@@ -15,6 +15,7 @@ kind: "package-reference"
 
 - [使用本包](#use-this-package)
 - [转发的 Host 事件](#forwarded-host-events)
+- [桌面提醒](#desktop-alerts)
 - [构建边界](#build-boundary)
 - [模型体验](#model-experience)
 - [已知限制与暂缓事项](#known-limitations-and-deferred-work)
@@ -43,6 +44,11 @@ Client 组合挂载 Commands、凭据、settings、Goal、动态 Cordis、文件
 监听器签名不在此处重写。名单内每条事件的 Cordis `Events` 声明都住在其 owner 包 client-safe 的 `./types` 出口，本包两个 face 都把那些声明纳入编译面。Host face 还会把每个条目断言给 `TypertForwardableEventEntry`：`emit` 条目必须是已声明的单向事件，`waterfall` 条目则必须是已声明的 Agent-scoped waterfall，且其最后一个参数是返回相同结果类型的 `next()` 回调。
 
 Host entry 为每条 Client stream 独立注册 allowlist listener 和队列，并在普通事件入队前拒绝非 JSON 参数。对于 waterfall，它只投影顶层 Agent 身份与 JSON 请求字段；Client 结果也必须能无损表示为 JSON，而 `next()` 会委托给后续 Host listener。该 source 在 `ctx.typertGateway.registerRemoteEvents()` 暴露 Gateway 内部的 `$events` logical stream 前同步挂好所有 listener，因此首个 `ready` 项既能证明增量投递已就绪，也会携带供 Client 显示路径的 Host home。撤回注册会中止活动 stream。
+
+<a id="desktop-alerts"></a>
+## 桌面提醒
+
+在 win32 上 Host 还会为三类用户注意力转发事件安装观察者监听——`agent/status`（顶层 running → idle）、`approval/request`、`user-questions/request`——触发 fire-and-forget PowerShell 子进程（`scripts/desktop-notify.ps1`）闪烁 dsh 浏览器任务栏图标并按类型播放提示音，让切到其它窗口的用户不会漏看安静的 Web 角标。每个观察者只提醒后继续委托，因此提醒永远不会阻塞或改变转发事件的语义；PowerShell 缺失或 spawn 失败按契约静默吞掉。行为逐次读取 `desktop-notify` settings namespace（热生效；开关与默认值见 `src/desktop-notify.ts`）。
 
 <a id="build-boundary"></a>
 ## 构建边界

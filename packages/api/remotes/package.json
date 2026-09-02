@@ -47,12 +47,14 @@
     "lib/index.js",
     "lib/client.js",
     "lib/types/**/*.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "scripts"
   ],
   "dependencies": {
     "@deepseek-ai/dsh-deque": "workspace:^",
     "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-util-values": "workspace:^"
+    "@deepseek-ai/dsh-util-values": "workspace:^",
+    "@deepseek-ai/schemastery": "workspace:^"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
@@ -60,6 +62,7 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-agent": "workspace:^",
     "@deepseek-ai/dsh-agent-presets": "workspace:^",
     "@deepseek-ai/dsh-api-gateway": "workspace:^",
     "@deepseek-ai/dsh-api-settings-controller": "workspace:^",

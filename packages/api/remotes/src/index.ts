@@ -25,10 +25,12 @@ import type {} from '@deepseek-ai/dsh-agent-presets/types'
 import type {} from '@deepseek-ai/dsh-settings/types'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import type {} from '@deepseek-ai/dsh-user-questions'
-export type {} from '@deepseek-ai/dsh-api-session-controller/types'
+import type {} from '@deepseek-ai/dsh-api-session-controller/types'
+import { installDesktopAlertObservers } from './desktop-notify.ts'
 
 export { API_REMOTE_FORWARDED_EVENTS } from './remote-events.ts'
 export type { ApiRemoteForwardedEvent } from './types.ts'
+export { installDesktopNotify, installDesktopAlertObservers } from './desktop-notify.ts'
 
 /** Required Host service: the Gateway owns the physical Remote stream mux. */
 export const inject = ['typertGateway']
@@ -39,6 +41,7 @@ export function apply(ctx: Context): void {
     () => ctx.typertGateway.registerRemoteEvents(remoteEventSource(ctx), { home: homedir() }),
     'api-remotes: forwarded Cordis event source',
   )
+  installDesktopAlertObservers(ctx)
 }
 
 /** Create the sole queue and listener set consumed by the registered Gateway. */
