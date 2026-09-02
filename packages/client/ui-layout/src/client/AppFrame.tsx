@@ -122,11 +122,13 @@ export function AppFrame({
   useStore,
   useSessions,
   usePanelInfo,
+  useSessionPendingInteraction,
   actions,
   renderSlot,
   t,
 }: AppFrameProps) {
   const layoutInfo = useStore(state => state.layoutInfo)
+  const pendingInteraction = useSessionPendingInteraction(pending => pending.size > 0)
   const frameRef = useRef<HTMLDivElement | null>(null)
   const viewport = layoutInfo.viewportWidth
 
@@ -214,6 +216,8 @@ export function AppFrame({
       data-dragging={dragging || undefined}
     >
       <DocumentTitle
+        attentionTitle={t('documentTitle.pending')}
+        pendingInteraction={pendingInteraction}
         productTitle={productTitle}
         useSessions={useSessions}
         usePanelInfo={usePanelInfo}
