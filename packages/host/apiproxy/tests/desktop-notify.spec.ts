@@ -1,30 +1,31 @@
 /**
- * Permission-request desktop alert: platform gating, settings resolution
- * (with hot reload), cooldown collapsing, and the exact spawn contract.
+ * Desktop alert for user-attention events: platform gating, per-kind settings
+ * resolution (with hot reload), cooldown collapsing, and the exact spawn
+ * contract.
  */
 
 import { describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import type { SpawnOptions } from 'node:child_process'
 import {
+  DEFAULT_DESKTOP_NOTIFY_SETTINGS,
   DEFAULT_FLASH_WINDOWS,
-  DEFAULT_PERMISSION_NOTIFY_SETTINGS,
-  installPermissionNotify,
-  PERMISSION_NOTIFY_NAMESPACE,
-  type PermissionNotifyChild,
-  type PermissionNotifyInternals,
-  type PermissionNotifySettings,
-} from '../src/permission-notify.ts'
+  DESKTOP_NOTIFY_NAMESPACE,
+  installDesktopNotify,
+  type DesktopNotifyChild,
+  type DesktopNotifyInternals,
+  type DesktopNotifySettings,
+} from '../src/desktop-notify.ts'
 
 type SpawnCall = [command: string, args: string[], options: SpawnOptions]
 
 function harness(overrides: {
   settings?: unknown
-  value?: PermissionNotifySettings
-  internals?: Partial<PermissionNotifyInternals>
+  value?: DesktopNotifySettings
+  internals?: Partial<DesktopNotifyInternals>
 } = {}) {
   let clock = 0
-  const spawn = vi.fn((_command: string, _args: string[], _options: SpawnOptions): PermissionNotifyChild => {
+  const spawn = vi.fn((_command: string, _args: string[], _options: SpawnOptions): DesktopNotifyChild => {
     return { unref: vi.fn() }
   })
   const settings = overrides.settings ?? (overrides.value === undefined
@@ -33,12 +34,12 @@ function harness(overrides: {
   const ctx = {
     get: (key: string) => key === 'settings' ? settings : undefined,
   } as unknown as Context
-  const handle = installPermissionNotify(ctx, {
+  const handle = installDesktopNotify(ctx, {
     platform: 'win32',
     now: () => clock,
     spawn,
     ...overrides.internals,
-  } as PermissionNotifyInternals)
+  } as DesktopNotifyInternals)
   return {
     handle,
     spawn,
@@ -48,29 +49,31 @@ function harness(overrides: {
   }
 }
 
-describe('installPermissionNotify', () => {
+describe('installDesktopNotify', () => {
   it('is a no-op off win32', () => {
     const spawn = vi.fn(() => ({ unref: vi.fn() }))
-    const handle = installPermissionNotify(
+    const handle = installDesktopNotify(
       { get: () => undefined } as unknown as Context,
       { platform: 'linux', spawn },
     )
-    handle.notify({ toolName: 'bash' })
+    handle.notify('approval', { toolName: 'bash' })
     expect(spawn).not.toHaveBeenCalled()
   })
 
-  it('spawns a plain powershell with the script path and env payload', () => {
+  it('spawns a plain powershell with the script path, kind, and env payload', () => {
     const { handle, call } = harness()
-    handle.notify({ toolName: 'bash', reason: 'escalation' })
+    handle.notify('approval', { toolName: 'bash', reason: 'escalation' })
 
     const [command, args, options] = call()!
     expect(command).toBe('powershell.exe')
     const fileIndex = args.indexOf('-File')
     expect(fileIndex).toBeGreaterThan(0)
-    expect(args[fileIndex + 1]).toMatch(/permission-notify\.ps1$/)
+    expect(args[fileIndex + 1]).toMatch(/desktop-notify\.ps1$/)
     expect(args).toContain('-Flash')
     expect(args).toContain('-Sound')
     expect(args).not.toContain('-Popup')
+    expect(args).toContain('-Kind')
+    expect(args[args.indexOf('-Kind') + 1]).toBe('approval')
     expect(args).toContain(DEFAULT_FLASH_WINDOWS.join(','))
     // Regression guard: `detached`/`windowsHide` make powershell.exe exit
     // without running the script under the restricted-token sandbox, so the
@@ -85,57 +88,93 @@ describe('installPermissionNotify', () => {
     expect(env.DSH_NOTIFY_TITLE).toContain('权限请求')
   })
 
-  it('collapses parallel approvals inside the cooldown window', () => {
+  it('passes the kind through for question and complete events', () => {
+    const { handle, calls, tick } = harness()
+    handle.notify('question', { toolName: 'ask_user_question' })
+    tick(3000)
+    handle.notify('complete', { sessionId: 's1' })
+
+    const questionArgs = calls()[0]![1]
+    expect(questionArgs[questionArgs.indexOf('-Kind') + 1]).toBe('question')
+    const completeArgs = calls()[1]![1]
+    expect(completeArgs[completeArgs.indexOf('-Kind') + 1]).toBe('complete')
+    const completeEnv = calls()[1]![2].env as Record<string, string>
+    expect(completeEnv.DSH_NOTIFY_MESSAGE).toContain('任务已完成')
+    expect(completeEnv.DSH_NOTIFY_TITLE).toContain('任务完成')
+  })
+
+  it('respects the per-kind enabled switch independently', () => {
+    const { handle, spawn, tick } = harness({
+      value: {
+        ...DEFAULT_DESKTOP_NOTIFY_SETTINGS,
+        question: { enabled: false, sound: true, soundFile: '' },
+      },
+    })
+    handle.notify('question')
+    expect(spawn).not.toHaveBeenCalled()
+    tick(3000)
+    handle.notify('approval', { toolName: 'bash' })
+    expect(spawn).toHaveBeenCalledTimes(1)
+  })
+
+  it('collapses parallel events inside the cooldown window across kinds', () => {
     const { handle, spawn, tick } = harness()
-    handle.notify({ toolName: 'a' })
+    handle.notify('approval', { toolName: 'a' })
     tick(1000)
-    handle.notify({ toolName: 'b' })
+    handle.notify('question')
     expect(spawn).toHaveBeenCalledTimes(1)
     tick(1100)
-    handle.notify({ toolName: 'c' })
+    handle.notify('complete', { sessionId: 's1' })
     expect(spawn).toHaveBeenCalledTimes(2)
   })
 
-  it('reads the settings namespace per request and hot-reloads it', () => {
-    let value = { ...DEFAULT_PERMISSION_NOTIFY_SETTINGS }
+  it('reads the settings namespace per call and hot-reloads it', () => {
+    let value = { ...DEFAULT_DESKTOP_NOTIFY_SETTINGS }
     const register = vi.fn(() => ({ get: () => value }))
     const { handle, spawn } = harness({ settings: { register } })
 
-    expect(register).toHaveBeenCalledWith(PERMISSION_NOTIFY_NAMESPACE, expect.anything())
-    value = { ...DEFAULT_PERMISSION_NOTIFY_SETTINGS, enabled: false }
-    handle.notify({ toolName: 'bash' })
+    expect(register).toHaveBeenCalledWith(DESKTOP_NOTIFY_NAMESPACE, expect.anything())
+    value = { ...DEFAULT_DESKTOP_NOTIFY_SETTINGS, enabled: false }
+    handle.notify('approval', { toolName: 'bash' })
     expect(spawn).not.toHaveBeenCalled()
 
-    value = { ...DEFAULT_PERMISSION_NOTIFY_SETTINGS }
-    handle.notify({ toolName: 'bash' })
+    value = { ...DEFAULT_DESKTOP_NOTIFY_SETTINGS }
+    handle.notify('approval', { toolName: 'bash' })
     expect(spawn).toHaveBeenCalledTimes(1)
   })
 
   it('falls back to defaults without a settings provider', () => {
     const { handle, calls } = harness()
-    handle.notify({ toolName: 'bash' })
+    handle.notify('approval', { toolName: 'bash' })
     expect(calls()).toHaveLength(1)
   })
 
   it('stays silent when every channel is off', () => {
     const { handle, spawn } = harness({
-      value: { ...DEFAULT_PERMISSION_NOTIFY_SETTINGS, flash: false, sound: false, popup: false },
+      value: {
+        ...DEFAULT_DESKTOP_NOTIFY_SETTINGS,
+        flash: false,
+        popup: false,
+        approval: { enabled: true, sound: false, soundFile: '' },
+        question: { enabled: true, sound: false, soundFile: '' },
+        complete: { enabled: true, sound: false, soundFile: '' },
+      },
     })
-    handle.notify({ toolName: 'bash' })
+    handle.notify('approval', { toolName: 'bash' })
     expect(spawn).not.toHaveBeenCalled()
   })
 
   it('mirrors channel switches and passes a custom sound file through', () => {
     const { handle, call } = harness({
       value: {
-        ...DEFAULT_PERMISSION_NOTIFY_SETTINGS,
+        ...DEFAULT_DESKTOP_NOTIFY_SETTINGS,
         flash: false,
         popup: true,
-        soundFile: 'C:\\sounds\\ding.wav',
         flashWindows: ['chrome'],
+        approval: { enabled: true, sound: true, soundFile: 'C:\\sounds\\ding.wav' },
       },
     })
-    handle.notify({ toolName: 'bash' })
+    handle.notify('approval', { toolName: 'bash' })
     const [, args] = call()!
     expect(args).not.toContain('-Flash')
     expect(args).toContain('-Popup')
@@ -155,10 +194,10 @@ describe('installPermissionNotify', () => {
 
   it('never throws on a failed spawn', () => {
     const spawn = vi.fn(() => { throw new Error('spawn failed') })
-    const handle = installPermissionNotify(
+    const handle = installDesktopNotify(
       { get: () => undefined } as unknown as Context,
       { platform: 'win32', now: () => 0, spawn },
     )
-    expect(() => handle.notify({ toolName: 'bash' })).not.toThrow()
+    expect(() => handle.notify('approval', { toolName: 'bash' })).not.toThrow()
   })
 })

@@ -1,12 +1,12 @@
 #requires -Version 5.0
 # =====================================================================
-#  DeepSeek Harness permission-request desktop alert (Windows)
+#  DeepSeek Harness user-attention desktop alert (Windows)
 #
-#  Spawned detached (fire-and-forget) by the web host the moment an
-#  approval/requested frame is broadcast, so a user working in another
-#  window notices the quiet approval badge:
-#    - flash: QQ-style taskbar flash on the dsh browser/terminal windows
-#    - sound: system exclamation chime (or a custom .wav)
+#  Spawned fire-and-forget by the web host when a user-attention event is
+#  broadcast (approval request, question, task completion), so a user
+#  working in another window notices the quiet badge:
+#    - flash: QQ-style taskbar flash on the dsh browser windows
+#    - sound: per-kind system sound (or a custom .wav)
 #    - popup: optional message box (default off)
 #
 #  This file is ASCII-only on purpose: Windows PowerShell 5.1 reads a
@@ -19,13 +19,14 @@ param(
   [switch]$Flash,
   [switch]$Sound,
   [switch]$Popup,
+  [string]$Kind = 'approval',
   [string]$SoundFile = '',
   [string]$FlashWindows = ''
 )
 $ErrorActionPreference = 'SilentlyContinue'
 
-$title   = if ($env:DSH_NOTIFY_TITLE)   { $env:DSH_NOTIFY_TITLE }   else { 'DeepSeek Harness permission request' }
-$message = if ($env:DSH_NOTIFY_MESSAGE) { $env:DSH_NOTIFY_MESSAGE } else { 'An approval is waiting in DeepSeek Harness.' }
+$title   = if ($env:DSH_NOTIFY_TITLE)   { $env:DSH_NOTIFY_TITLE }   else { 'DeepSeek Harness notification' }
+$message = if ($env:DSH_NOTIFY_MESSAGE) { $env:DSH_NOTIFY_MESSAGE } else { 'DeepSeek Harness needs your attention.' }
 $tool    = if ($env:DSH_NOTIFY_TOOL)    { $env:DSH_NOTIFY_TOOL }    else { '' }
 
 # ---------------- log (capped at ~200KB, auto-truncated) ----------------
@@ -38,14 +39,22 @@ function Write-Log($line) {
     "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  $line" | Out-File $logPath -Append -Encoding UTF8
   } catch {}
 }
-Write-Log ("permission-notify: flash=$Flash sound=$Sound popup=$Popup tool=$tool")
+Write-Log ("desktop-notify: kind=$Kind flash=$Flash sound=$Sound popup=$Popup tool=$tool")
 
 # ---------------- sound ----------------
 if ($Sound) {
   if ($SoundFile -and (Test-Path $SoundFile)) {
     try { (New-Object Media.SoundPlayer $SoundFile).Play() } catch {}
   } else {
-    try { [System.Media.SystemSounds]::Exclamation.Play() } catch {}
+    # Default system sound per kind: approval = exclamation (needs a decision),
+    # question = question chime, complete = asterisk (informational).
+    try {
+      switch ($Kind) {
+        'question' { [System.Media.SystemSounds]::Question.Play() }
+        'complete' { [System.Media.SystemSounds]::Asterisk.Play() }
+        default    { [System.Media.SystemSounds]::Exclamation.Play() }
+      }
+    } catch {}
   }
 }
 

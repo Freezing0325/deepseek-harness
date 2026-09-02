@@ -110,7 +110,7 @@ import {
   inspectApiRemoteSession,
 } from '@deepseek-ai/dsh-api-remotes'
 import { canOpenNativePath, openNativePath, openNativeTextFile } from './native-path-opener.ts'
-import { installPermissionNotify } from './permission-notify.ts'
+import { installDesktopNotify } from './desktop-notify.ts'
 
 /** Page size when history is called without maxMessages. */
 const DEFAULT_MAX_MESSAGES = 50
@@ -1218,13 +1218,27 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     for (const queue of muxQueues) queue.push(envelope)
   }
 
-  // --- Permission-request desktop alert ----------------------------------
-  // The Web approval badge is quiet by design; someone working in another
-  // window misses it and the agent stalls. Fire a Windows taskbar flash +
-  // chime (win32 only, fire-and-forget) on the approval broadcast below —
-  // never on mux replay, which merely re-presents an already-known request.
-  // Behavior reads the `permission-notify` settings namespace per request.
-  const permissionNotify = installPermissionNotify(ctx)
+  // --- User-attention desktop alert --------------------------------------
+  // The Web badges are quiet by design; someone working in another window
+  // misses them and the agent stalls. Fire a Windows taskbar flash + chime
+  // (win32 only, fire-and-forget) on the approval/question broadcasts below
+  // and on task completion (agent running → idle) — never on mux replay,
+  // which merely re-presents an already-known request. Behavior reads the
+  // `desktop-notify` settings namespace per call.
+  const desktopNotify = installDesktopNotify(ctx)
+
+  // Task-completion alert: the agent running → idle edge. Track the last seen
+  // status per session so the alert fires once per run, and skip subagents —
+  // only a top-level task finishing deserves a desktop alert.
+  const lastRunning = new Map<SessionId, boolean>()
+  ctx.on('agent/status', ({ agent, status }: { agent: Agent; status: AgentStatus }) => {
+    const running = status === 'running'
+    const wasRunning = lastRunning.get(agent.id) ?? false
+    lastRunning.set(agent.id, running)
+    if (wasRunning && !running && agent.session.header.parentSession === undefined) {
+      desktopNotify.notify('complete', { sessionId: String(agent.id) })
+    }
+  })
 
   // Projection change feed → session/projection push frames. The carrier
   // mints the wire frame (the Service Definition package holds no wire vocabulary); the
@@ -1341,6 +1355,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           rpcId,
           payload: { type: 'question/requested', sessionId, questions: request.questions },
         }
+        desktopNotify.notify('question', { toolName: 'ask_user_question' })
         for (const queue of muxQueues) queue.push(envelope)
       })
     },
@@ -1433,7 +1448,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         pendingApprovals.set(pending.rpcId, pending)
         req.signal?.addEventListener('abort', onAbort, { once: true })
         const envelope = requestedFrame(pending)
-        permissionNotify.notify({
+        desktopNotify.notify('approval', {
           toolName: pending.toolName,
           ...pending.reason === undefined ? {} : { reason: pending.reason },
         })

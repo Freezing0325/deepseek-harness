@@ -286,7 +286,7 @@ describe('settings domain', () => {
     const value = expectOk(await api.settings.describe(request({})))
     expect(value.writable).toBe(true)
     expect(value.hasDocument).toBe(true)
-    // installPermissionNotify registers its namespace only on win32.
+    // installDesktopNotify registers its namespace only on win32.
     expect(value.namespaces).toHaveLength(process.platform === 'win32' ? 2 : 1)
     const view = value.namespaces[0]!
     expect(view.ns).toBe('llm-deepseek')
@@ -392,7 +392,7 @@ describe('settings domain', () => {
     expect(value.namespaces.map(view => view.ns)).toEqual([
       'llm-deepseek', 'some-other-plugin', 'permission', 'ui-theme', 'locale',
       'ui-conversation', 'shell', 'agent-loop', 'web-search-deepseek',
-      ...process.platform === 'win32' ? ['permission-notify'] : [],
+      ...process.platform === 'win32' ? ['desktop-notify'] : [],
     ])
     const permission = expectOk(await api.settings.mutate(request({
       ns: 'permission',
@@ -447,7 +447,7 @@ describe('settings domain', () => {
     }))
     const api = createApiProxy(ctx, DEFAULTS)
     expect(expectOk(await api.settings.describe(request({}))).namespaces.map(view => view.ns))
-      .toEqual(['ui-onboarding', 'ui-theme', ...process.platform === 'win32' ? ['permission-notify'] : []])
+      .toEqual(['ui-onboarding', 'ui-theme', ...process.platform === 'win32' ? ['desktop-notify'] : []])
     const frames = await collectHost(api, ['host/remote-event'], 2, async () => {
       expectOk(await api.settings.mutate(request({
         ns: 'ui-onboarding',
@@ -484,7 +484,7 @@ describe('settings domain', () => {
     ctx.settings.register(NS, AdapterConfig)
     const api = createApiProxy(ctx, DEFAULTS)
     expect(expectOk(await api.settings.describe(request({}))).namespaces.map(view => view.ns))
-      .toEqual(['llm-deepseek', ...process.platform === 'win32' ? ['permission-notify'] : []])
+      .toEqual(['llm-deepseek', ...process.platform === 'win32' ? ['desktop-notify'] : []])
     expect(expectOk(await api.settings.update(request({ ns: 'llm-deepseek', patch: { baseURL: 'https://x' } }))).value)
       .toMatchObject({ baseURL: 'https://x' })
   })
