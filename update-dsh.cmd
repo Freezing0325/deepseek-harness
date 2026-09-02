@@ -1,78 +1,87 @@
 @echo off
 rem ============================================================
-rem  dsh ä¸€é”®æ›´æ–°è„šæœ¬
-rem  ä½œç”¨ï¼šæ‹‰å–å®˜æ–¹æœ€æ–°ç‰ˆæœ¬ï¼Œå¹¶æŠŠæœ¬åœ°å®šåˆ¶è¡¥ä¸é‡æ”¾åˆ°æœ€æ–°ä¸Šæ¸¸ä¹‹ä¸Š
-rem  ç”¨æ³•ï¼šåŒå‡»æœ¬æ–‡ä»¶ï¼Œæˆ–åœ¨å‘½ä»¤è¡Œæ‰§è¡Œ update-dsh.cmd
-rem  å‰ç½®ï¼šClash ä»£ç†åœ¨è¿è¡Œï¼ˆgit fetch èµ° 127.0.0.1:7897ï¼‰
-rem  è¯¦è§åŒç›®å½• GIT-GUIDE.mdï¼ˆgit æ“ä½œæ•™å­¦ï¼‰
+rem  dsh Ò»¼ü¸üĞÂ½Å±¾
+rem  ×÷ÓÃ£ºÀ­È¡¹Ù·½×îĞÂ°æ±¾£¬²¢°Ñ±¾µØ¶¨ÖÆ²¹¶¡ÖØ·Åµ½×îĞÂÉÏÓÎÖ®ÉÏ
+rem  ÓÃ·¨£ºË«»÷±¾ÎÄ¼ş£¬»òÔÚÃüÁîĞĞÖ´ĞĞ update-dsh.cmd
+rem  Ç°ÖÃ£ºClash ´úÀíÔÚÔËĞĞ£¨git fetch ×ß 127.0.0.1:7897£©
+rem  Ïê¼ûÍ¬Ä¿Â¼ GIT-GUIDE.md£¨git ²Ù×÷½ÌÑ§£©
 rem ============================================================
 setlocal
 cd /d "%~dp0"
 
-echo [1/6] æ£€æŸ¥å·¥ä½œæ ‘çŠ¶æ€...
+echo [1/6] ¼ì²é¹¤×÷Ê÷×´Ì¬...
 git status --porcelain | findstr /r /c:"." >nul
 if not errorlevel 1 (
   echo.
-  echo  *** è­¦å‘Šï¼šå­˜åœ¨æœªæäº¤çš„æ”¹åŠ¨ï¼ ***
-  echo  æœªæäº¤æ”¹åŠ¨ä¼šé˜»æ­¢ rebaseï¼Œè¯·å…ˆå¤„ç†ï¼š
-  echo    æŸ¥çœ‹ï¼š   git status
-  echo    æäº¤ï¼š   git add -A ^&^& git commit -m "æè¿°ä½ çš„æ”¹åŠ¨"
-  echo    ä¸¢å¼ƒï¼š   git restore .    ï¼ˆå±é™©ï¼Œä¼šä¸¢å¤±æ”¹åŠ¨ï¼‰
-  echo  å¤„ç†å®Œå†é‡æ–°è¿è¡Œæœ¬è„šæœ¬ã€‚
+  echo  *** ¾¯¸æ£º´æÔÚÎ´Ìá½»µÄ¸Ä¶¯£¡ ***
+  echo  Î´Ìá½»¸Ä¶¯»á×èÖ¹ rebase£¬ÇëÏÈ´¦Àí£º
+  echo    ²é¿´£º   git status
+  echo    Ìá½»£º   git add -A ^&^& git commit -m "ÃèÊöÄãµÄ¸Ä¶¯"
+  echo    ¶ªÆú£º   git restore .    £¨Î£ÏÕ£¬»á¶ªÊ§¸Ä¶¯£©
+  echo  ´¦ÀíÍêÔÙÖØĞÂÔËĞĞ±¾½Å±¾¡£
   goto :end
 )
-echo  å·¥ä½œæ ‘å¹²å‡€ï¼Œå¯ä»¥æ›´æ–°ã€‚
+echo  ¹¤×÷Ê÷¸É¾»£¬¿ÉÒÔ¸üĞÂ¡£
 
-echo [2/6] æ‹‰å–å®˜æ–¹æœ€æ–°ç‰ˆæœ¬...
+echo [2/6] À­È¡¹Ù·½×îĞÂ°æ±¾...
 git fetch origin
 if errorlevel 1 goto :git_error
 
-echo [3/6] æœ¬æ¬¡å®˜æ–¹æ›´æ–°ï¼ˆæœ€è¿‘ 10 æ¡æäº¤ï¼‰:
+echo [3/6] ±¾´Î¹Ù·½¸üĞÂ£¨×î½ü 10 ÌõÌá½»£©:
 git log --oneline HEAD..origin/master | more
 echo.
 
-echo [4/6] é‡æ”¾æœ¬åœ°è¡¥ä¸åˆ°æœ€æ–°ä¸Šæ¸¸ï¼ˆrebaseï¼‰...
+echo [4/6] ÖØ·Å±¾µØ²¹¶¡µ½×îĞÂÉÏÓÎ£¨rebase£©...
 git rebase origin/master
 if errorlevel 1 (
   echo.
-  echo  *** rebase é‡åˆ°å†²çªï¼Œéœ€è¦æ‰‹åŠ¨è§£å†³ ***
-  echo  æ­¥éª¤ï¼š
-  echo    1. git status          æŸ¥çœ‹å“ªäº›æ–‡ä»¶å†²çª
-  echo    2. ç¼–è¾‘å†²çªæ–‡ä»¶         å»æ‰ ^<^<^<^<^<^< HEAD / ^=^=^=^=^=^= / ^>^>^>^>^>^> æ ‡è®°ï¼Œ
-  echo                            ä¿ç•™ä½ æƒ³è¦çš„å†…å®¹
-  echo    3. git add å·²è§£å†³çš„æ–‡ä»¶
-  echo    4. git rebase --continue  ç»§ç»­
-  echo  æ”¾å¼ƒæœ¬æ¬¡åˆå¹¶ï¼šgit rebase --abort
-  echo  è§£å†³å†²çªçš„è¯¦ç»†æ•™ç¨‹è§ GIT-GUIDE.md
+  echo  *** rebase Óöµ½³åÍ»£¬ĞèÒªÊÖ¶¯½â¾ö ***
+  echo  ²½Öè£º
+  echo    1. git status          ²é¿´ÄÄĞ©ÎÄ¼ş³åÍ»
+  echo    2. ±à¼­³åÍ»ÎÄ¼ş         È¥µô ^<^<^<^<^<^< HEAD / ^=^=^=^=^=^= / ^>^>^>^>^>^> ±ê¼Ç£¬
+  echo                            ±£ÁôÄãÏëÒªµÄÄÚÈİ
+  echo    3. git add ÒÑ½â¾öµÄÎÄ¼ş
+  echo    4. git rebase --continue  ¼ÌĞø
+  echo  ·ÅÆú±¾´ÎºÏ²¢£ºgit rebase --abort
+  echo  ½â¾ö³åÍ»µÄÏêÏ¸½Ì³Ì¼û GIT-GUIDE.md
   goto :end
 )
 
-echo [5/6] åŒæ­¥ master åˆ†æ”¯åˆ°å®˜æ–¹æœ€æ–°...
+echo [5/6] Í¬²½ master ·ÖÖ§µ½¹Ù·½×îĞÂ...
 git branch -f master origin/master
 
-echo [6/6] æ›´æ–°ä¾èµ–ï¼ˆpnpm installï¼‰...
+echo [6/6] ¸üĞÂÒÀÀµ²¢Í¬²½¹¹½¨²úÎï...
 call pnpm install
 if errorlevel 1 (
-  echo  ä¾èµ–æ›´æ–°å¤±è´¥ï¼Œè¯·æ£€æŸ¥ç½‘ç»œåæ‰‹åŠ¨è¿è¡Œ: pnpm install
+  echo  ÒÀÀµ¸üĞÂÊ§°Ü£¬Çë¼ì²éÍøÂçºóÊÖ¶¯ÔËĞĞ: pnpm install
+  goto :end
+)
+echo  ÇåÀí³Â¾É¹¹½¨²úÎï£¨¹Ù·½´ó°æ±¾¸üĞÂºó±ØĞë£¬·ñÔò²ĞÁô lib »á±¨´í£©...
+call pnpm run clean
+if errorlevel 1 goto :git_error
+call pnpm run build
+if errorlevel 1 (
+  echo.
+  echo  *** ¹¹½¨Ê§°Ü£¡ÇëÏÈ´¦Àí±àÒë´íÎó£¬ÔÙÖØÆô dsh ***
   goto :end
 )
 
 echo.
 echo  ============================================================
-echo   æ›´æ–°å®Œæˆï¼
-echo   å½“å‰çŠ¶æ€: my-custom = å®˜æ–¹æœ€æ–° + ä½ çš„æœ¬åœ°è¡¥ä¸
-echo   æŸ¥çœ‹è¡¥ä¸: git log --oneline origin/master..my-custom
-echo   é‡å¯ç”Ÿæ•ˆ: dsh stop ç„¶å dsh web
+echo   ¸üĞÂÍê³É£¡
+echo   µ±Ç°×´Ì¬: my-custom = ¹Ù·½×îĞÂ + ÄãµÄ±¾µØ²¹¶¡
+echo   ²é¿´²¹¶¡: git log --oneline origin/master..my-custom
+echo   ÖØÆôÉúĞ§: deepseek stop È»ºó deepseek web
 echo  ============================================================
 goto :end
 
 :git_error
 echo.
-echo  git å‘½ä»¤å¤±è´¥ã€‚å¸¸è§åŸå› ï¼š
-echo   1. Clash ä»£ç†æœªè¿è¡Œï¼ˆgit èµ° 127.0.0.1:7897ï¼‰
-echo      - è¿è¡Œ clash-auto fixï¼Œæˆ–æ‰‹åŠ¨æ‰“å¼€ Clash Verge
-echo   2. ç½‘ç»œå¼‚å¸¸
-echo  ä¿®å¤åé‡æ–°è¿è¡Œæœ¬è„šæœ¬ã€‚
+echo  git ÃüÁîÊ§°Ü¡£³£¼ûÔ­Òò£º
+echo   1. Clash ´úÀíÎ´ÔËĞĞ£¨git ×ß 127.0.0.1:7897£©
+echo      - ÔËĞĞ clash-auto fix£¬»òÊÖ¶¯´ò¿ª Clash Verge
+echo   2. ÍøÂçÒì³£
+echo  ĞŞ¸´ºóÖØĞÂÔËĞĞ±¾½Å±¾¡£
 goto :end
 
 :end
