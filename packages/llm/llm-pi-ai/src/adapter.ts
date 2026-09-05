@@ -265,6 +265,27 @@ function requestHeaders(
   }
 }
 
+/** Header carrying the per-conversation session for providers that route by it. */
+const OPENCODE_SESSION_HEADER = 'x-opencode-session'
+const SESSION_UUID_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
+/**
+ * Derive the wire session value from a harness conversation id
+ * (`session-<uuid>`, minted once per conversation and frozen at creation):
+ * the bare UUID it carries, or the raw string when it carries none.
+ */
+function normalizeSessionId(sessionId: string): string {
+  return SESSION_UUID_PATTERN.exec(sessionId)?.[0] ?? sessionId
+}
+/**
+ * Automatic per-conversation session header for OpenCode-routed providers,
+ * mirroring the official client's `providerID.startsWith("opencode")` gate.
+ * Other providers get nothing.
+ */
+function opencodeSessionHeader(provider: string, sessionId: string | undefined): Record<string, string> {
+  if (sessionId === undefined || !provider.startsWith('opencode')) return {}
+  return { [OPENCODE_SESSION_HEADER]: normalizeSessionId(sessionId) }
+}
+
 /**
  * pi-ai-backed multi-provider adapter. Each operation reads the current
  * profiles, so a configuration change reaches the next request without a
@@ -463,7 +484,16 @@ export class PiAiAdapter extends LlmAdapter {
         ...options.maxTokens === undefined ? {} : { maxTokens: options.maxTokens },
         ...options.sessionId === undefined ? {} : { sessionId: String(options.sessionId) },
         signal: watchdog.signal,
-        headers: requestHeaders(profile.headers, options, model.baseUrl, this.config.prepareHeaders),
+        // Profile headers are deployment-owned; attribution names are
+        // Harness-owned and therefore win collisions.
+        // The runtime session header wins over any static entry.
+        headers: {
+          ...requestHeaders(profile.headers, options, model.baseUrl, this.config.prepareHeaders),
+          ...opencodeSessionHeader(
+            options.provider,
+            options.sessionId === undefined ? undefined : String(options.sessionId),
+          ),
+        },
       })
       const iterator = toStreamChunks(events, model.contextWindow, options.signal, model.id)[Symbol.asyncIterator]()
       let exhausted = false
