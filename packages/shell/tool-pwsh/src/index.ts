@@ -32,7 +32,7 @@ import type { JobId, JobRegistry, JobView } from '@deepseek-ai/dsh-jobs'
 import type {} from '@deepseek-ai/dsh-shell-env'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import type { SandboxExecutionPolicy, SandboxMode } from '@deepseek-ai/dsh-sandbox'
-import { ESCALATION_TARGETS, approveEscalation, sandboxPermissionsDescription, validateEscalationArgs } from '@deepseek-ai/dsh-sandbox'
+import { ESCALATION_TARGETS, approveEscalation, isNonWidening, sandboxPermissionsDescription, validateEscalationArgs } from '@deepseek-ai/dsh-sandbox'
 import type { SandboxPolicyService } from '@deepseek-ai/dsh-sandbox-policy'
 import type { ShellExecRequest, ShellExecSpec, ShellExecution, ShellRunResult } from '@deepseek-ai/dsh-shell'
 import { parseExitStatus } from '@deepseek-ai/dsh-shell'
@@ -103,7 +103,7 @@ interface PwshForegroundResult {
 }
 
 /* jscpd:ignore-start -- minimal mirror of dsh-tool-bash's validation and execute plumbing (Agent Note). */
-function validatePwshArgs(args: PwshToolArgs): void {
+function validatePwshArgs(args: PwshToolArgs, effectiveMode: SandboxMode | undefined): void {
   if (args.command.trim().length === 0) {
     throw new Error('invalid command: expected a non-empty string')
   }
@@ -113,6 +113,11 @@ function validatePwshArgs(args: PwshToolArgs): void {
   if (args.timeoutMs !== undefined && (!Number.isFinite(args.timeoutMs) || args.timeoutMs <= 0)) {
     throw new Error(`invalid timeoutMs: expected a positive number, got ${JSON.stringify(args.timeoutMs)}`)
   }
+  // A redundant escalation (requested mode at or below the effective mode) asks
+  // for no capability the call lacks: its pairing is not forced, and the call
+  // runs under the standing policy instead of failing as a malformed ask.
+  if (args.sandbox_permissions !== undefined && effectiveMode !== undefined
+    && isNonWidening(args.sandbox_permissions, effectiveMode)) return
   // The escalation pairing (sandbox_permissions ⇔ justification, non-empty) is
   // the shared rule both enforcing families validate identically.
   validateEscalationArgs(args.sandbox_permissions, args.justification)
@@ -496,9 +501,9 @@ export function apply(ctx: Context, config: Config = {}): void {
       },
       /* jscpd:ignore-start -- the execute path mirrors dsh-tool-bash's by design (see the pwsh-tool-and-executor Agent Note). */
       async execute(args: PwshToolArgs, exec) {
-        validatePwshArgs(args)
-        // Description is display metadata; workdir defaults to the caller's session.
         const standingPolicy = resolveSandboxPolicy(exec)
+        validatePwshArgs(args, standingPolicy?.mode)
+        // Description is display metadata; workdir defaults to the caller's session.
         const approvedMode = args.sandbox_permissions !== undefined && args.justification !== undefined
           ? await approvePwshEscalation(args.sandbox_permissions, args.justification, exec, standingPolicy)
           : undefined
