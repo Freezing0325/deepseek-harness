@@ -97,7 +97,7 @@ This section explains the design decisions behind the contract and points at the
 
 ### Escalation choreography
 
-The ladder is a closed table — `read-only` may escalate to `workspace-write` or `danger-full-access`, `workspace-write` only to `danger-full-access` — checked at execution, never baked into a tool schema, whose enum stays the closed target vocabulary. [`approveEscalation`](src/escalation.ts) validates the `sandbox_permissions`/`justification` pairing, rejects non-widening requests without prompting a human, and maps every approval outcome to its own error before anything executes.
+The ladder is a closed table — `read-only` may escalate to `workspace-write` or `danger-full-access`, `workspace-write` only to `danger-full-access` — checked at execution, never baked into a tool schema, whose enum stays the closed target vocabulary. [`approveEscalation`](src/escalation.ts) validates the `sandbox_permissions`/`justification` pairing and maps every approval outcome to its own error before anything executes. Strict widening is the only path to the approval channel: a request for a mode at or below the call's effective mode is redundant — the capability already stands — so it reuses the effective mode without prompting (a standing `danger-full-access` policy therefore executes a defensive same-or-narrower retry instead of failing on "not strictly wider"), while an unrankable mode string still fails closed through the strict-widening gate.
 
 ### Writable roots
 

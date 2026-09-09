@@ -969,9 +969,28 @@ describe('sandbox escalation API (write/edit)', () => {
 
   it('rejects the escalation argument pairing (one field without the other)', async () => {
     const { ctx } = await setupConfining()
-    const missing = await call(ctx, 'write', { file_path: 'a.txt', content: 'x', sandbox_permissions: 'workspace-write' }, escalationAgent())
+    const missing = await call(ctx, 'write', { file_path: 'a.txt', content: 'x', sandbox_permissions: 'workspace-write' }, escalationAgent([{ type: 'sandbox/mode', data: { mode: 'read-only' } }]))
     expect(missing.isError).toBe(true)
     expect(text(missing)).toContain('sandbox_permissions requires a justification')
+  })
+
+  it('a redundant escalation runs under the standing mode without prompting (the #468 regression)', async () => {
+    const { ctx, fs } = await setupConfining({ approval: true })
+    const prompted = vi.fn()
+    ctx.on('approval/request', () => { prompted(); return Promise.resolve('allowed-once' as const) })
+    const agent = escalationAgent([{ type: 'sandbox/mode', data: { mode: 'danger-full-access' } }])
+    // equal mode: danger-full-access requested under danger-full-access
+    const equal = await call(ctx, 'write', { file_path: 'a.txt', content: 'x', sandbox_permissions: 'danger-full-access', justification: 'redundant' }, agent)
+    expect(equal.isError).toBe(false)
+    // below + blank justification: the #468 failure pair (redundant mode with
+    // the empty justification a defensive retry sometimes carries)
+    const narrow = await call(ctx, 'write', { file_path: 'b.txt', content: 'y', sandbox_permissions: 'workspace-write', justification: '' }, agent)
+    expect(narrow.isError).toBe(false)
+    expect(prompted).not.toHaveBeenCalled()
+    expect(fs.stamped).toEqual([
+      { mode: 'danger-full-access', workspaceRoot: resolve('/session-project'), sessionId: SessionId('sess-fs-esc') },
+      { mode: 'danger-full-access', workspaceRoot: resolve('/session-project'), sessionId: SessionId('sess-fs-esc') },
+    ])
   })
 
   it('sandbox_permissions under a non-confining backend fails closed (unadvertised field still reaches execute)', async () => {

@@ -31,6 +31,32 @@ export const WIDER_MODES: Record<string, readonly SandboxMode[]> = {
 }
 
 /**
+ * The mode rank that orders the escalation ladder. Recognizes a request that
+ * asks for a mode at or below the call's effective mode — the capability is
+ * already standing, so the request is redundant rather than a widening.
+ * `danger-full-access` is the top of the ladder; nothing ranks above it.
+ */
+const MODE_RANK: Record<SandboxMode, number> = {
+  'read-only': 0,
+  'workspace-write': 1,
+  'danger-full-access': 2,
+}
+
+/**
+ * True when `requestedMode` ranks at or below `effectiveMode` — the request
+ * carries no widening to grant, so it should be reused idempotently instead of
+ * treated as a fatal non-widening escalation. An unrankable (unknown) mode
+ * string returns false so it still fails closed through the strict-widening
+ * gate, keeping the closed vocabulary enforced.
+ * @param requestedMode - the raw `sandbox_permissions` target, if given.
+ * @param effectiveMode - the call's effective mode to compare against.
+ */
+export function isNonWidening(requestedMode: string, effectiveMode: SandboxMode): boolean {
+  const requestedRank = MODE_RANK[requestedMode as SandboxMode]
+  return requestedRank !== undefined && requestedRank <= MODE_RANK[effectiveMode]
+}
+
+/**
  * The closed escalation-target vocabulary — every mode a call could ever
  * escalate TO (`read-only` is the floor; nothing escalates to it). Advertised
  * whenever the mounted capability confines: cutting the enum down to the modes
@@ -149,13 +175,25 @@ export interface EscalationRequest {
  * non-widening request, a missing approval service, an agent-less execution,
  * a rejection, a cancellation, an unanswerable ask) — the tool registry turns
  * the throw into the call's isError result, and nothing has run. A
- * non-widening request never prompts a human.
+ * non-widening request never prompts a human. A request at or below the
+ * effective mode is redundant, not fatal: it reuses the standing mode without
+ * consulting the approval channel and never lowers the call — under a standing
+ * `danger-full-access` policy, a defensive `sandbox_permissions` retry carried
+ * over from a narrower session resolves by running under the already-standing
+ * mode instead of dying on "not strictly wider".
  * @param request - the escalation to judge (see {@link EscalationRequest}).
  * @param approval - the approval ingredients the tool holds (see {@link EscalationApproval}).
  * @returns the granted mode, consumed by the one call that asked.
  */
 export async function approveEscalation<A, C>(request: EscalationRequest, approval: EscalationApproval<A, C>): Promise<SandboxMode> {
   const { requestedMode: mode, effectiveMode, justification, subject } = request
+  // A request at or below the effective mode is redundant: the capability it
+  // asks for is already standing. Reuse the effective mode (never lowering the
+  // call) without reporting an error or prompting — only a strict widening, or
+  // an unrankable mode string that fails closed below, reaches the approval path.
+  if (isNonWidening(mode, effectiveMode)) {
+    return effectiveMode
+  }
   // Strict widening is an EXECUTION check against the call's effective mode —
   // deliberately not a schema constraint (the enum is the closed target
   // vocabulary; the effective mode is per-call truth).
