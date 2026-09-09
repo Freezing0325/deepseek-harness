@@ -19,7 +19,7 @@ import type {} from '@deepseek-ai/dsh-jobs'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import type {} from '@deepseek-ai/dsh-shell-env'
 import type { SandboxExecutionPolicy, SandboxMode } from '@deepseek-ai/dsh-sandbox'
-import { ESCALATION_TARGETS, approveEscalation, canonicalPath, validateEscalationArgs } from '@deepseek-ai/dsh-sandbox'
+import { ESCALATION_TARGETS, approveEscalation, canonicalPath, isNonWidening, validateEscalationArgs } from '@deepseek-ai/dsh-sandbox'
 import type { SandboxPolicyService } from '@deepseek-ai/dsh-sandbox-policy'
 import { DSH_ENV_PREFIX } from '@deepseek-ai/dsh-shell'
 import type { ShellRunResult } from '@deepseek-ai/dsh-shell'
@@ -51,7 +51,14 @@ interface BashToolArgs {
   justification?: string
 }
 
-function validateBashArgs(args: BashToolArgs): void {
+/**
+ * Validate the non-escalation bash arguments, and the escalation pairing unless
+ * the request is redundant. A redundant escalation (requested mode at or below
+ * the standing mode) is a no-op argument — the capability is already standing —
+ * so its pairing is not forced before execution; the escalation path then runs
+ * under the standing policy instead of failing on the pairing text.
+ */
+function validateBashArgs(args: BashToolArgs, redundantEscalation = false): void {
   if (args.command.trim().length === 0) {
     throw new Error('invalid command: expected a non-empty string')
   }
@@ -63,7 +70,9 @@ function validateBashArgs(args: BashToolArgs): void {
   }
   // The escalation pairing (sandbox_permissions ⇔ justification, non-empty) is
   // the shared rule both enforcing families validate identically.
-  validateEscalationArgs(args.sandbox_permissions, args.justification)
+  if (!redundantEscalation) {
+    validateEscalationArgs(args.sandbox_permissions, args.justification)
+  }
 }
 
 function bashDescription(backgroundEnabled: boolean, escalationModes: readonly SandboxMode[]): string {
@@ -327,9 +336,16 @@ export function apply(ctx: Context, config: Config = {}): void {
       }],
     },
     async execute(args: BashToolArgs, exec) {
-      validateBashArgs(args)
-      // Description is display metadata; workdir defaults to the caller's session.
+      // Resolve the standing policy first so a redundant escalation (requested
+      // mode at or below the effective mode) can bypass the escalation-argument
+      // pairing validation: under a standing top mode the capability is already
+      // granted, so the defensive `sandbox_permissions` a narrower session
+      // taught the model is a no-op argument rather than a malformed ask.
       const standingPolicy = resolveSandboxPolicy(exec)
+      const redundantEscalation = args.sandbox_permissions !== undefined && standingPolicy !== undefined
+        && isNonWidening(args.sandbox_permissions, standingPolicy.mode)
+      validateBashArgs(args, redundantEscalation)
+      // Description is display metadata; workdir defaults to the caller's session.
       const approvedMode = args.sandbox_permissions !== undefined && args.justification !== undefined
         ? await approveBashEscalation(args.sandbox_permissions, args.justification, exec, standingPolicy)
         : undefined

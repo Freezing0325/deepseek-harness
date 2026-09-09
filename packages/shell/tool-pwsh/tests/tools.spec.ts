@@ -617,23 +617,42 @@ describe('sandbox escalation through ctx.approval', () => {
     expect(schema.parameters.properties).not.toHaveProperty('sandbox_permissions')
   })
 
-  it('rejects injected escalation without a sandbox and non-widening escalation without prompting', async () => {
+  it('rejects injected escalation without a sandbox and unrankable escalation without prompting', async () => {
     const plain = await setup()
     expect(text(await call(plain.ctx, 'pwsh', escalate))).toContain('not available in this composition')
 
     const { ctx } = await setupSandboxed(true)
     const prompted = vi.fn()
     ctx.on('approval/request', () => { prompted(); return Promise.resolve<ApprovalOutcome>('allowed-once') })
-    const result = await call(ctx, 'pwsh', { ...escalate, sandbox_permissions: 'workspace-write' }, sandboxAgent('workspace-write'))
-    expect(text(result)).toContain('not strictly wider')
-    expect(prompted).not.toHaveBeenCalled()
-
+    // An unrankable mode string is not a redundancy the ladder can recognize,
+    // so it still fails closed through the strict-widening gate without prompting.
     const malformed = sandboxAgent()
     ;(malformed.session.append as unknown as (
       type: string,
       data: Record<string, unknown>,
     ) => unknown)('sandbox/mode', { mode: 'unknown-mode' })
     expect(text(await call(ctx, 'pwsh', escalate, malformed))).toContain('not strictly wider')
+    expect(prompted).not.toHaveBeenCalled()
+  })
+
+  it('runs a redundant escalation under the standing mode without prompting (the #468 regression)', async () => {
+    const { ctx, bash } = await setupSandboxed(true)
+    const prompted = vi.fn()
+    ctx.on('approval/request', () => { prompted(); return Promise.resolve<ApprovalOutcome>('allowed-once') })
+    const agent = sandboxAgent('danger-full-access', ctx)
+    ctx.agents.register(agent)
+    for (const [callId, args] of [
+      // equal: danger-full-access requested under danger-full-access
+      [ToolCallId('redundant-full'), { ...escalate, sandbox_permissions: 'danger-full-access' }],
+      // below + blank justification: the #468 failure pair (redundant mode with
+      // the empty justification a defensive retry sometimes carries)
+      [ToolCallId('redundant-narrow'), { ...escalate, sandbox_permissions: 'workspace-write', justification: '' }],
+    ] as const) {
+      const result = await ctx.tools.execute({ callId, name: 'pwsh', arguments: args, agent, signal: new AbortController().signal })
+      expect(result.isError).toBe(false)
+    }
+    expect(prompted).not.toHaveBeenCalled()
+    expect(bash.modes).toEqual(['danger-full-access', 'danger-full-access'])
   })
 
   it('fails closed when approval cannot be routed', async () => {

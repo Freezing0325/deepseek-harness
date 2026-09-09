@@ -81,13 +81,25 @@ describe('approveEscalation', () => {
     expect(seen[0]?.reason).toBe('escalate sandbox to workspace-write: the user asked to write in the workspace')
   })
 
-  it('a non-widening request fails closed with its own text and never asks', async () => {
+  it('reuses the standing mode for a request at or below it, never asking or lowering', async () => {
     const seen: unknown[] = []
     const spy = ingredients({ approver: approver('allowed-once', r => seen.push(r)) })
-    await expect(approveEscalation(req({ requestedMode: 'read-only' }), spy))
-      .rejects.toThrow(/not strictly wider than this call's current "read-only" mode/)
+    // equal: read-only requested under read-only
+    await expect(approveEscalation(req({ requestedMode: 'read-only' }), spy)).resolves.toBe('read-only')
+    // below: workspace-write requested under danger-full-access (the #468 regression)
     await expect(approveEscalation(req({ requestedMode: 'workspace-write', effectiveMode: 'danger-full-access' as never }), spy))
-      .rejects.toThrow(/not strictly wider/)
+      .resolves.toBe('danger-full-access')
+    // equal: danger-full-access requested under danger-full-access
+    await expect(approveEscalation(req({ requestedMode: 'danger-full-access', effectiveMode: 'danger-full-access' as never }), spy))
+      .resolves.toBe('danger-full-access')
+    expect(seen).toEqual([])
+  })
+
+  it('an unknown mode string fails closed with the verbatim non-widening text and never asks', async () => {
+    const seen: unknown[] = []
+    const spy = ingredients({ approver: approver('allowed-once', r => seen.push(r)) })
+    await expect(approveEscalation(req({ requestedMode: 'bogus-mode' }), spy))
+      .rejects.toThrow(/not strictly wider than this call's current "read-only" mode/)
     expect(seen).toEqual([])
   })
 

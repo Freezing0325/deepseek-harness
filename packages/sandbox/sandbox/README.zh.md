@@ -97,7 +97,7 @@ kind: "package-reference"
 
 ### 升权编排
 
-阶梯是封闭表——`read-only` 可升权到 `workspace-write` 或 `danger-full-access`，`workspace-write` 只能升权到 `danger-full-access`——在执行时检查，绝不写入工具 schema，schema 的枚举保持封闭的目标词汇。[`approveEscalation`](src/escalation.ts) 校验 `sandbox_permissions`/`justification` 配对、不提示人类就拒绝非加宽请求，并在任何执行前把每个审批结果映射到各自的错误。
+阶梯是封闭表——`read-only` 可升权到 `workspace-write` 或 `danger-full-access`，`workspace-write` 只能升权到 `danger-full-access`——在执行时检查，绝不写入工具 schema，schema 的枚举保持封闭的目标词汇。[`approveEscalation`](src/escalation.ts) 校验 `sandbox_permissions`/`justification` 配对，并在任何执行前把每个审批结果映射到各自的错误。严格加宽是通向审批通道的唯一路径：请求模式等于或低于调用有效模式的请求是冗余的——该能力已具备——因此直接复用有效模式，不提示也不报错（standing `danger-full-access` 策略下，防御性的同级或更窄重试会正常执行，而不是撞上 "not strictly wider"）；不可排序的未知模式字符串仍会经严格加宽闸门 fail closed。
 
 ### 可写根目录
 

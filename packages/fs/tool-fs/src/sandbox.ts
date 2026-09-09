@@ -13,7 +13,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { ToolExecution } from '@deepseek-ai/dsh-tools'
 import type { SandboxExecutionPolicy, SandboxMode } from '@deepseek-ai/dsh-sandbox'
-import { ESCALATION_TARGETS, approveEscalation, escalationHintMarker, sandboxDenialMarker, validateEscalationArgs } from '@deepseek-ai/dsh-sandbox'
+import { ESCALATION_TARGETS, approveEscalation, escalationHintMarker, isNonWidening, sandboxDenialMarker, validateEscalationArgs } from '@deepseek-ai/dsh-sandbox'
 import type { SandboxPolicyService } from '@deepseek-ai/dsh-sandbox-policy'
 import { FsError } from '@deepseek-ai/dsh-fs'
 
@@ -85,8 +85,16 @@ export class FsSandboxController {
    *   unsandboxed backend.
    */
   async resolvePolicy(toolName: string, args: FsEscalationArgs, exec: ToolExecution): Promise<SandboxExecutionPolicy | undefined> {
-    validateEscalationArgs(args.sandbox_permissions, args.justification)
     const standingPolicy = this.policy?.resolve({ ...exec.agent ? { session: exec.agent.session } : {} })
+    // A redundant escalation (requested mode at or below the standing mode) is
+    // a no-op argument — the capability is already standing — so its pairing is
+    // not forced and the mutation runs under the standing policy instead of
+    // failing on the pairing or "not strictly wider" text.
+    const redundantEscalation = args.sandbox_permissions !== undefined && standingPolicy !== undefined
+      && isNonWidening(args.sandbox_permissions, standingPolicy.mode)
+    if (!redundantEscalation) {
+      validateEscalationArgs(args.sandbox_permissions, args.justification)
+    }
     if (args.sandbox_permissions === undefined || args.justification === undefined) {
       return standingPolicy
     }
