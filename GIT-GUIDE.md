@@ -10,13 +10,15 @@
 | `master` | 和官方完全一致（纯净版） | 对比官方用，**永远不要在上面提交** |
 | `my-custom` | 官方 + 你的本地补丁（默认分支） | 你所有的工作都在这 |
 
-你的本地补丁就是这些提交（当前有 10 个）：
+你的本地补丁就是这些提交（当前有 15 个，逐条登记在 `local/README.md`）：
 
 ```
+feat(session): session.events getter（dsh-tui 读取的快照 API）
+fix(llm-pi-ai): OpenCode x-opencode-session 头
 feat(api-remotes): 桌面提醒（审批/提问/任务完成，win32）
-feat(web): 标题待审批闪烁（ui-layout）
-fix(apiproxy): 权限提醒（3 个提交）+ 泛化 desktop-notify（2 个提交）
-docs / chore: 一键更新脚本 + git 指南（3 个提交）
+feat(ui-layout): 标题待审批闪烁
+fix(sandbox): 沙箱升级幂等（非扩权请求不再报错）
+docs / chore: 一键更新脚本 + git 指南 + local/ 补丁自检（8 个提交）
 ```
 
 > 2026-09 更新说明：网络控制策略（sandbox 独立网络策略轴、tool-web 网络门禁、
@@ -115,9 +117,11 @@ pnpm install                         # 官方可能改了依赖，装一下
 
 ## 七、当前进度（本次更新结果）
 
-- 官方版本：**0.1.2-alpha.5**（master 已同步；0.1.1-rc.2 → 0.1.2 是大版本重构）
-- 本地补丁：**10 个**，全部按新架构重放/移植到最新上游，无冲突残留
+- 官方版本：**0.1.5-rc.1**（master 已同步；0.1.2-alpha.5 → 0.1.5 跨了 rc.1 / 0.1.3 / 0.1.5 三条版本线，客户端与会话层都有改动）
+- 本地补丁：**15 个**，全部重放到新上游之上；只有两处冲突，均已手工合并
+  （A3 标题闪烁按新的 `DocumentTitle` 结构重写；A4 沙箱文档的中文侧取补丁语义）
 - 已移除：网络策略 4 个补丁（鸡肋）+ directory-picker 修复（上游已自带）
-- 桌面提醒 / 标题闪烁：按新架构移植（apiproxy → api-remotes，ui-renderer → ui-layout）
+- 桌面提醒 / 标题闪烁：都在（A2 自动合并，A3 已适配 ui-layout 新结构）
 - 启动器已同步修复：wrapper 加 `--no-open`（避免双开浏览器），并把 25 秒等待上限放宽到约 5 分钟（冷启动超过 25 秒不再误报失败）
+- 补丁自检：`local\doctor.cmd`，逐条跑每个 A 类补丁自带的 spec 探针（清单见 `local/README.md`）
 - typecheck / 受影响包测试：全部通过

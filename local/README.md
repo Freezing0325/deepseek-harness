@@ -30,13 +30,13 @@
 
 | # | 补丁 | 提交 | 探针（spec 文件） |
 |---|---|---|---|
-| A1 | OpenCode `x-opencode-session` 头（源码侧） | `68ae8bdc0a` | `packages/llm/llm-pi-ai/tests/session-header.spec.ts` |
-| A2 | 桌面提醒 desktop-notify（审批/提问/完成，win32） | `55d3864cf0` | `packages/api/remotes/tests/desktop-notify.spec.ts` |
-| A3 | 标签页待审批闪烁 | `4e4dc3d5e5` | `packages/client/ui-layout/tests/document-title.client.spec.tsx` |
-| A4 | 沙箱升级幂等（重复的非扩权升级请求不再报错） | `f046e19e30` | `packages/sandbox/sandbox/tests/escalation.spec.ts`、`packages/fs/tool-fs/tests/tools.spec.ts`、`packages/shell/tool-bash/tests/tools.spec.ts`、`packages/shell/tool-pwsh/tests/tools.spec.ts` |
-| A5 | 一键更新脚本 + git 指南（本目录的宿主） | `08923fba1a`、`f4d9471fc4`、`fe6f90ddd3`、`70421ad57c`、`0025cc3640` | 文件存在性断言（doctor 内置，无需 spec） |
-| A6 | Agent Note 文档配对记录 | `dec62bccb0` | 文件存在性断言（doctor 内置） |
-| A7 | `session.events` getter（`deepseek tui` 读取；快照重构后变成 undefined） | `c4b0cb18c5` | `packages/core/session/tests/session.spec.ts`（`events getter` 两条用例） |
+| A1 | OpenCode `x-opencode-session` 头（源码侧） | `47b69d2f8a` | `packages/llm/llm-pi-ai/tests/session-header.spec.ts` |
+| A2 | 桌面提醒 desktop-notify（审批/提问/完成，win32） | `0f185d5cde` | `packages/api/remotes/tests/desktop-notify.spec.ts` |
+| A3 | 标签页待审批闪烁 | `328ba0cb93` | `packages/client/ui-layout/tests/document-title.client.spec.tsx` |
+| A4 | 沙箱升级幂等（重复的非扩权升级请求不再报错） | `31df14264f` | `packages/sandbox/sandbox/tests/escalation.spec.ts`、`packages/fs/tool-fs/tests/tools.spec.ts`、`packages/shell/tool-bash/tests/tools.spec.ts`、`packages/shell/tool-pwsh/tests/tools.spec.ts` |
+| A5 | 一键更新脚本 + git 指南（本目录的宿主） | `3b8bc323ca`、`f4cecd9fab`、`995a4cce66`、`caa6b07bbb`、`bdee25e3f9` | 文件存在性断言（doctor 内置，无需 spec） |
+| A6 | Agent Note 文档配对记录 | `a3cbcfafe5` | 文件存在性断言（doctor 内置） |
+| A7 | `session.events` getter（`deepseek tui` 读取；快照重构后变成 undefined） | `ea2573c083` | `packages/core/session/tests/session.spec.ts`（`events getter` 两条用例） |
 
 > A4 与 A1 都属于**上游也想要**的修复（A4 上游至今没有、A1 有人独立写了同样实现）。能提到上游就尽早提，合并后这条补丁永久消失，连 npm 侧都不用再补。
 
