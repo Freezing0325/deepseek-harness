@@ -5,6 +5,7 @@
 跑 `local\doctor.cmd`（或双击）即可把下面所有检查跑一遍，最后输出一张表。
 
 - 教程向的 git 操作说明在仓库根目录 `GIT-GUIDE.md`。
+- **换机 / 跨机器同步的核对清单在 `local/PORTING.md`**（git 管不到的启动器、`~/.dsh` 配置、profile 插件路径都在那里逐项登记）。
 - 设计背景与历史决策在 `~/.dsh/PATCHING.md`。
 - 本文件是**补丁的唯一清单**：加了新补丁必须在这里登记一行，否则 doctor 检查不到它。
 
@@ -59,13 +60,16 @@
 
 ## 四、C 类：配置（只能人工核对）
 
-doctor 会把这些原样列出来提醒你，但不会替你改：
+doctor 会把这些原样列出来提醒你，但不会替你改（跨机器的逐项清单见 `local/PORTING.md` 第三、四节）：
 
 - `~/.dsh/settings.yaml` 的 `desktop-notify` 段（开关 / 提示音 / `flashWindows`）
-- `~/.dsh/profiles/web/cordis.patch.yml`、`~/.dsh/profiles/dsh-tui/cordis.patch.yml` 的插件注册
+- `~/.dsh/settings.yaml` 的 `llm-pi-ai.providers` 自定义 provider（两台的默认模型/provider 清单要对齐）
 - `~/.dsh/mode.txt`（默认模式 web / cli / tui）
 - `.credentials.yaml` 的 `version` 必须是**数字 `1`**
 - npm 全局是否又被生成了无扩展名 shim `%APPDATA%\npm\dsh`、`%APPDATA%\npm\dsh-tui`（有就删）
+
+> 唯一例外：profile 补丁层里指向仓库外文件的 `file://` 引用，doctor 会**自动检查是否存在**
+> （`跨机` 那一行）——换机后 `~/.dsh/profiles/*/cordis.patch.yml` 里的绝对路径最容易失效。
 
 ## 五、什么时候跑 doctor
 
