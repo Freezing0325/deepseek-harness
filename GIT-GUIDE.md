@@ -10,15 +10,15 @@
 | `master` | 和官方完全一致（纯净版） | 对比官方用，**永远不要在上面提交** |
 | `my-custom` | 官方 + 你的本地补丁（默认分支） | 你所有的工作都在这 |
 
-你的本地补丁就是这些提交（当前有 17 个，逐条登记在 `local/README.md`）：
+你的本地补丁就是这些提交（当前有 18 个，逐条登记在 `local/README.md`）：
 
 ```
 feat(session): session.events getter（dsh-tui 读取的快照 API）
 fix(llm-pi-ai): OpenCode x-opencode-session 头
 feat(api-remotes): 桌面提醒（审批/提问/任务完成，win32）
-feat(ui-layout): 标题待审批闪烁
+feat(ui-layout): 标题待审批闪烁 + 按新结构的适配
 fix(sandbox): 沙箱升级幂等（非扩权请求不再报错）
-docs / chore: 一键更新脚本 + git 指南 + local/ 补丁自检（10 个提交，含每次 rebase 后的登记同步）
+docs / chore: 一键更新脚本 + git 指南 + local/ 补丁自检（12 个提交，含每次 rebase 后的登记同步）
 ```
 
 > 2026-09 更新说明：网络控制策略（sandbox 独立网络策略轴、tool-web 网络门禁、
