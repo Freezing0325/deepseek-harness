@@ -36,6 +36,7 @@
 | A4 | 沙箱升级幂等（重复的非扩权升级请求不再报错） | `f046e19e30` | `packages/sandbox/sandbox/tests/escalation.spec.ts`、`packages/fs/tool-fs/tests/tools.spec.ts`、`packages/shell/tool-bash/tests/tools.spec.ts`、`packages/shell/tool-pwsh/tests/tools.spec.ts` |
 | A5 | 一键更新脚本 + git 指南（本目录的宿主） | `08923fba1a`、`f4d9471fc4`、`fe6f90ddd3`、`70421ad57c`、`0025cc3640` | 文件存在性断言（doctor 内置，无需 spec） |
 | A6 | Agent Note 文档配对记录 | `dec62bccb0` | 文件存在性断言（doctor 内置） |
+| A7 | `session.events` getter（`deepseek tui` 读取；快照重构后变成 undefined） | `c4b0cb18c5` | `packages/core/session/tests/session.spec.ts`（`events getter` 两条用例） |
 
 > A4 与 A1 都属于**上游也想要**的修复（A4 上游至今没有、A1 有人独立写了同样实现）。能提到上游就尽早提，合并后这条补丁永久消失，连 npm 侧都不用再补。
 
