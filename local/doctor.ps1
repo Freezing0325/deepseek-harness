@@ -44,7 +44,7 @@ Write-Host ("仓库: {0}" -f $RepoRoot) -ForegroundColor DarkGray
 # --------------------------------------------------------------------------
 # 1) fork 漂移
 # --------------------------------------------------------------------------
-Write-Section '1/3  fork 漂移（本地分支 vs mine/my-custom）'
+Write-Section '1/4  fork 漂移（本地分支 vs mine/my-custom）'
 
 $branch = (& git -C $RepoRoot rev-parse --abbrev-ref HEAD 2>$null)
 if ($LASTEXITCODE -ne 0 -or -not $branch) {
@@ -97,7 +97,7 @@ else {
 # --------------------------------------------------------------------------
 # 2) A 类源码补丁 —— 跑补丁自带的 spec
 # --------------------------------------------------------------------------
-Write-Section '2/3  A 类源码补丁（跑 spec 探针）'
+Write-Section '2/4  A 类源码补丁（跑 spec 探针）'
 
 $specGroups = @(
   @{ Name = 'A1 OpenCode session 头'; Specs = @('packages/llm/llm-pi-ai/tests/session-header.spec.ts') },
@@ -138,7 +138,7 @@ else {
 
 # 设施文件与文档配对：没有 spec，用存在性断言
 $infraFiles = @(
-  'GIT-GUIDE.md', 'update-dsh.cmd', 'local\README.md',
+  'GIT-GUIDE.md', 'update-dsh.cmd', 'local\README.md', 'local\PORTING.md',
   'local\doctor.cmd', 'local\doctor.ps1', 'local\patch-opencode-session.cjs'
 )
 $missing = @()
@@ -171,7 +171,7 @@ else {
 # --------------------------------------------------------------------------
 # 3) B 类仓库外补丁
 # --------------------------------------------------------------------------
-Write-Section '3/3  B 类仓库外补丁'
+Write-Section '3/4  B 类仓库外补丁'
 
 # B1：npm 版 dsh 的 x-opencode-session 头（deepseek tui 链路）
 $patchScript = Join-Path $PSScriptRoot 'patch-opencode-session.cjs'
@@ -214,6 +214,42 @@ if ($lprobs.Count -eq 0) {
 }
 else {
   Add-Check 'B类' 'B2 deepseek 启动器漂移' 'FAIL' (($lprobs -join '; ') + ' —— 需人工修 ~/.dsh/bin')
+}
+
+# --------------------------------------------------------------------------
+# 4) 跨机器核对：profile 补丁层引用的仓库外文件是否还在
+#    （换机后最容易踩的坑：整份 checkout 可移植，但 profile 的
+#     cordis.patch.yml 里可能有指向工作区的 file:// 绝对路径）
+# --------------------------------------------------------------------------
+Write-Section '4/4  跨机器核对（profile 补丁层的外部引用）'
+
+$profileRoot = Join-Path $env:USERPROFILE '.dsh\profiles'
+$patchFiles = @()
+if (Test-Path $profileRoot) {
+  Get-ChildItem $profileRoot -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+    $candidate = Join-Path $_.FullName 'cordis.patch.yml'
+    if (Test-Path $candidate) { $patchFiles += $candidate }
+  }
+}
+$brokenRefs = @()
+$checkedRefs = 0
+foreach ($pf in $patchFiles) {
+  $text = Get-Content $pf -Raw -ErrorAction SilentlyContinue
+  if (-not $text) { continue }
+  foreach ($m in [regex]::Matches($text, "file:///([^'`"\s\)]+)")) {
+    $checkedRefs += 1
+    $decoded = ([System.Uri]::UnescapeDataString($m.Groups[1].Value)) -replace '/', '\'
+    if (-not (Test-Path $decoded)) { $brokenRefs += ("{0}: {1}" -f (Split-Path $pf -Leaf), $decoded) }
+  }
+}
+if ($checkedRefs -eq 0) {
+  Add-Check '跨机' 'profile 外部插件引用' 'OK' "补丁层没有 file:// 外部引用（查了 $($patchFiles.Count) 个 cordis.patch.yml）"
+}
+elseif ($brokenRefs.Count -eq 0) {
+  Add-Check '跨机' 'profile 外部插件引用' 'OK' "$checkedRefs 处引用都可达"
+}
+else {
+  Add-Check '跨机' 'profile 外部插件路径不存在' 'WARN' (($brokenRefs -join '; ') + ' —— 按 local/PORTING.md 第四节改成这台机器的实际路径')
 }
 
 # --------------------------------------------------------------------------
