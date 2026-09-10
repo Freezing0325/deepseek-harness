@@ -9,7 +9,7 @@ rem ============================================================
 setlocal
 cd /d "%~dp0"
 
-echo [1/6] 检查工作树状态...
+echo [1/7] 检查工作树状态...
 git status --porcelain | findstr /r /c:"." >nul
 if not errorlevel 1 (
   echo.
@@ -23,15 +23,17 @@ if not errorlevel 1 (
 )
 echo  工作树干净，可以更新。
 
-echo [2/6] 拉取官方最新版本...
+echo [2/7] 拉取官方最新版本与你的 fork...
 git fetch origin
 if errorlevel 1 goto :git_error
+git fetch mine
+if errorlevel 1 echo  警告：拉取 fork 失败，fork 同步检查会退化（代理没开？）
 
-echo [3/6] 本次官方更新（最近 10 条提交）:
+echo [3/7] 本次官方更新（最近 10 条提交）:
 git log --oneline HEAD..origin/master | more
 echo.
 
-echo [4/6] 重放本地补丁到最新上游（rebase）...
+echo [4/7] 重放本地补丁到最新上游（rebase）...
 git rebase origin/master
 if errorlevel 1 (
   echo.
@@ -47,10 +49,10 @@ if errorlevel 1 (
   goto :end
 )
 
-echo [5/6] 同步 master 分支到官方最新...
+echo [5/7] 同步 master 分支到官方最新...
 git branch -f master origin/master
 
-echo [6/6] 更新依赖并同步构建产物...
+echo [6/7] 更新依赖并同步构建产物...
 call pnpm install
 if errorlevel 1 (
   echo  依赖更新失败，请检查网络后手动运行: pnpm install
@@ -66,14 +68,29 @@ if errorlevel 1 (
   goto :end
 )
 
+call :run_doctor
 echo.
 echo  ============================================================
 echo   更新完成！
 echo   当前状态: my-custom = 官方最新 + 你的本地补丁
 echo   查看补丁: git log --oneline origin/master..my-custom
+echo   推送到 fork: git push mine my-custom
 echo   重启生效: deepseek stop 然后 deepseek web
 echo  ============================================================
 goto :end
+
+:run_doctor
+echo [7/7] 自检本地补丁与 fork 同步（local\doctor.ps1）...
+set "PSEXE=powershell"
+where pwsh >nul 2>nul && set "PSEXE=pwsh"
+if not exist "%~dp0local\doctor.ps1" goto :no_doctor
+call "%PSEXE%" -NoProfile -ExecutionPolicy Bypass -File "%~dp0local\doctor.ps1"
+if errorlevel 1 echo  自检有未通过项，请按上面提示处理（详见 local\README.md）
+goto :eof
+
+:no_doctor
+echo  未找到 local\doctor.ps1，跳过自检
+goto :eof
 
 :git_error
 echo.
