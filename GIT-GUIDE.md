@@ -115,13 +115,33 @@ pnpm install                         # 官方可能改了依赖，装一下
 | `git restore <文件>` | 丢弃某文件改动（危险） |
 | `git stash` | 暂时收起未提交改动（可恢复） |
 
-## 七、当前进度（本次更新结果）
+## 七、在另一台电脑上同步这次的更新
+
+两台电脑共用同一个 fork，但**这次升级重写了 `my-custom` 的历史**（官方 0.1.2-alpha.5 → 0.1.5-rc.1，本地补丁全部重放，提交号全变了），所以那台**不能直接 `git pull`**（会报分叉或 non-fast-forward）：
+
+```bash
+git status                                   # 1. 确认没有未提交改动（有就先提交或 stash）
+git branch backup/pre-0.1.5-<日期>            # 2. 备份（别省）
+git checkout my-custom
+git fetch mine                               # 3. 远端名以 git remote -v 为准（origin=官方，mine=fork）
+git reset --hard mine/my-custom              # 4. 直接对齐到 fork
+pnpm install                                 # 5. 官方改了依赖
+pnpm run build                               # 6. 必须：TUI 读的是构建产物
+local\doctor.cmd                             # 7. 自检，应全绿
+```
+
+⚠️ 那台若本地有这台没有的提交，**先别 reset**：记下那几条提交，重置后 `git cherry-pick`，或先告诉这台，由这台合并后再统一推。
+
+git 管不到的部分（启动器、`~/.dsh` 配置、profile 里指向工作区的外部插件路径）逐项登记在 **`local/PORTING.md`**，按它核对即可。
+
+## 八、当前进度（本次更新结果）
 
 - 官方版本：**0.1.5-rc.1**（master 已同步；0.1.2-alpha.5 → 0.1.5 跨了 rc.1 / 0.1.3 / 0.1.5 三条版本线，客户端与会话层都有改动）
-- 本地补丁：**15 个**，全部重放到新上游之上；只有两处冲突，均已手工合并
+- 本地补丁：**18 个**，全部重放到新上游之上；只有两处冲突，均已手工合并
   （A3 标题闪烁按新的 `DocumentTitle` 结构重写；A4 沙箱文档的中文侧取补丁语义）
 - 已移除：网络策略 4 个补丁（鸡肋）+ directory-picker 修复（上游已自带）
 - 桌面提醒 / 标题闪烁：都在（A2 自动合并，A3 已适配 ui-layout 新结构）
 - 启动器已同步修复：wrapper 加 `--no-open`（避免双开浏览器），并把 25 秒等待上限放宽到约 5 分钟（冷启动超过 25 秒不再误报失败）
 - 补丁自检：`local\doctor.cmd`，逐条跑每个 A 类补丁自带的 spec 探针（清单见 `local/README.md`）
-- typecheck / 受影响包测试：全部通过
+- 验证结果：`pnpm run build` 通过；`pnpm run test:gui` 373 个文件 / 5333 个用例通过；doctor 全绿（A1–A7、B1–B2、跨机项）
+- 换机：另一台电脑怎么同步见本文第七节；git 管不到的配置与插件路径见 `local/PORTING.md`
