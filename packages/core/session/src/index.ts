@@ -581,6 +581,16 @@ export class Session {
   private eventsSnapshot: readonly SessionEvent[] | undefined
 
   /**
+   * dsh-tui compatibility (rc-era API surface): an immutable snapshot of the
+   * append-only event log, equivalent to {@link snapshotEvents}. The
+   * 0.10.0-beta.4+ TUI reads `session.events`; the snapshot refactor moved
+   * this behind `snapshotEvents()` and left `events` undefined.
+   */
+  get events(): readonly SessionEvent[] {
+    return this.snapshotEvents()
+  }
+
+  /**
    * Return the immutable event stored at one exact sequence number.
    * @param seq - event sequence number.
    * @returns the accepted event, or undefined when the log does not contain it.
