@@ -181,7 +181,26 @@ node local/patch-opencode-session.cjs
 
 ---
 
-## 六、这次升级两台各自要做的总结
+## 六、升级与构建踩过的坑
+
+（这两条来自 2026-09-02 的那份旧移植笔记，至今仍然有效，所以搬到这里；其余内容已被本文件取代。）
+
+**构建**
+
+- 官方换版本（大改）后先 `pnpm run clean` 再 `pnpm run build`：tsc 的增量缓存（`*.tsbuildinfo`）会把**陈旧产物**留在 `packages/*/lib/`，tsdown 打包时报 `MISSING_EXPORT`（本机实际遇到过，clean 之后就好了）。
+- 源码版启动走 `node --import tsx/esm apps/cli/src/bin.ts`，host / client 两面的 `lib/*.js` 产物都必须存在（缺 `typert.host.js` 或 `lib/client.js` 会启动即崩）。
+- 冷启动（重启机器后第一次）超过 30 秒属正常（tsx 要加载整仓），启动器的等待上限约 3 分钟。
+- 只想局部重建：`pnpm run build:lib`（库）/ `pnpm run build:web`（前端 `apps/web/dist`，改前端后只跑这个）。
+
+**数据目录（`~/.dsh`）**
+
+- 会话正文：`~/.dsh/sessions/**/session.jsonl.zstd`（zstd 压缩的历史，**勿删**）。
+- 派生投影缓存：`~/.dsh/storages/`。旧版本写下的缓存与新版 schema 不兼容时**启动会崩**——把 `storages` 备份移走后新版会自动重建（本机 2026-09-02 就这样处理过，重建后自动恢复了 3 个旧工作区）。
+- `~/.dsh/storages.old-20260902` 是当时的备份，确认不需要回滚就可以删（本机仍留着）。
+
+---
+
+## 七、这次升级两台各自要做的总结
 
 | 步骤 | 这台 | 那台 |
 |---|---|---|
