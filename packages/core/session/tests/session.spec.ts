@@ -1076,6 +1076,34 @@ describe('Session', () => {
     expect(session.snapshotEvents()).toBe(after)
   })
 
+  it('reads the append-only log through an immutable events getter', () => {
+    const session = Session.create(SessionId('events-getter'))
+    expect(session.events).toEqual([])
+    expectTypeOf(session.events).toEqualTypeOf<readonly SessionEvent[]>()
+
+    session.append('turn/start', { turn: 1 })
+    const events = session.events
+    expect(events).toBe(session.snapshotEvents())
+    expect(events.map(event => event.type)).toEqual(['turn/start'])
+    expect(Object.isFrozen(events)).toBe(true)
+    expect(() => { (events as SessionEvent[]).push(events[0]!) }).toThrow(TypeError)
+
+    session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    expect(session.events).toHaveLength(2)
+    expect(events).toHaveLength(1)
+  })
+
+  it('reads inherited events through the events getter after a fork', () => {
+    const parent = Session.create(SessionId('events-getter-parent'))
+    parent.append('turn/start', { turn: 1 })
+    parent.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    const child = Session.create(SessionId('events-getter-child'), parent.snapshotEvents())
+
+    expect(child.events.slice(0, parent.seq)).toEqual(parent.snapshotEvents())
+    expect(child.events).not.toBe(parent.snapshotEvents())
+    expect(child.events.map(event => event.type)).toEqual(['turn/start', 'turn/end', 'session/end-seed'])
+  })
+
   it('reads one event without materializing an array and snapshots half-open ranges', () => {
     const session = Session.create(SessionId('event-reads'))
     const start = session.append('turn/start', { turn: 1 })
