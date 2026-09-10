@@ -115,6 +115,12 @@ if ($Quick) {
   Add-Check 'A类' 'spec 探针' 'SKIP' '本次带了 -Quick，跳过（不跑测试）'
 }
 else {
+  # 从 dsh 服务继承来的环境里 NODE_ENV=production。Vite 在生产模式下会把 setupFiles
+  # 引用的 node: 内置模块错误地按浏览器路径外部化，于是**所有** jsdom 客户端套件在加载
+  # 阶段就失败并报 "No such built-in module: node:"（0 个用例被收集）。症状看起来像补丁
+  # 被 rebase 改坏，实际与补丁无关——纯上游在同样的环境里也一样红。
+  # 证据：同一个 spec，NODE_ENV=production 时 0 通过，NODE_ENV=test 时全绿。
+  $env:NODE_ENV = 'test'
   Push-Location $RepoRoot
   foreach ($group in $specGroups) {
     Write-Host ("  running {0} ..." -f $group.Name) -ForegroundColor DarkGray
