@@ -134,6 +134,12 @@ dshmarket
 dsh-session-recycle-bin
 ```
 
+那台若缺这些第三方插件，在 profile 目录里装一次（`dsh plugin` 就是把参数转发给 pnpm，工作目录是那个 profile）：
+
+```bash
+dsh plugin --profile web install
+```
+
 本机 `cordis.patch.yml` 里注册了一个**仓库外的工作区插件**（这是跨机器最容易踩的坑）：
 
 | 项 | 本机值 |
