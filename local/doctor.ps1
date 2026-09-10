@@ -1,4 +1,4 @@
-﻿<#
+<#
   dsh 本地补丁自检 — 检查逻辑（入口是同目录 doctor.cmd）
 
   三组检查：
@@ -107,7 +107,8 @@ $specGroups = @(
       'packages/sandbox/sandbox/tests/escalation.spec.ts',
       'packages/fs/tool-fs/tests/tools.spec.ts',
       'packages/shell/tool-bash/tests/tools.spec.ts',
-      'packages/shell/tool-pwsh/tests/tools.spec.ts') }
+      'packages/shell/tool-pwsh/tests/tools.spec.ts') },
+  @{ Name = 'A7 session.events getter（TUI 读取）'; Specs = @('packages/core/session/tests/session.spec.ts') }
 )
 
 if ($Quick) {
