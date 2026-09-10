@@ -6,6 +6,11 @@
 * text=auto eol=lf
 *.cmd text eol=crlf
 
+# Local patch (see local/README.md): the two local .cmd wrappers must reach the
+# working tree as CRLF, because cmd.exe mis-scans labels and Chinese text when
+# they are LF. Their in-repo form stays LF, per the rule above.
+*.cmd text eol=crlf
+
 *.pdf binary
 
 # Pairing records are generated from the three confirmed owner-blob pairs.
