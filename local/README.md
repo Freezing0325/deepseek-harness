@@ -40,6 +40,8 @@
 
 > A4 与 A1 都属于**上游也想要**的修复（A4 上游至今没有、A1 有人独立写了同样实现）。能提到上游就尽早提，合并后这条补丁永久消失，连 npm 侧都不用再补。
 
+> A7 走的是**构建产物**而非源码：`deepseek tui` 是 `node` 直接拉起 npm 上的 dsh-tui（没有 tsx hook），它解析到的 `@deepseek-ai/dsh-session` 就是 `packages/core/session/lib/` 的编译结果。所以改了 `src/index.ts` 必须 `pnpm build` 才对 TUI 生效——只改源码不构建，TUI 仍读旧产物（`agent.session.events` 几十处会读出 undefined）。
+
 ## 三、B 类：仓库外补丁
 
 | # | 补丁 | 载体（唯一真相） | doctor 怎么查 |
