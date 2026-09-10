@@ -207,7 +207,7 @@ else {
   $text = [System.Text.Encoding]::GetEncoding(936).GetString($bytes)
   if (-not $text.Contains('--no-open')) { $lprobs += 'deepseek.cmd 丢了 --no-open（会双开浏览器）' }
   if (-not ($bytes -contains 13)) { $lprobs += 'deepseek.cmd 不是 CRLF 行尾（cmd 标签扫描会错乱）' }
-  if (-not $text.Contains('web.out.log')) { $lprobs += 'deepseek.cmd 丢了 token 提取（找不到 web.out.log 引用）' }
+  if (-not ($text.Contains('web-url.log') -or $text.Contains('web.out.log'))) { $lprobs += 'deepseek.cmd 丢了 token 提取（找不到 web-url.log / web.out.log 引用）' }
 }
 if ($lprobs.Count -eq 0) {
   Add-Check 'B类' 'B2 deepseek 启动器' 'OK' 'exe 在、--no-open 在、CRLF 在、token 提取在'
