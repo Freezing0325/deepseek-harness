@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-05-opencode-session-header.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-05-opencode-session-header.md
-2026-09-05-opencode-session-header.md: 07ed3e1fb3365638436ccc2be1f83d5ca3356cde
-2026-09-05-opencode-session-header.zh.md: 298dd0a8806174fee39d93b81592ed9510f3a711
+/agent-note-automatic-x-opencode-session-header-on-opencode-routes:
+  en: 83be96332e05738f
+  zh: 2c5871507b373563
+/agent-note-automatic-x-opencode-session-header-on-opencode-routes/problem:
+  en: 5a3b405155b09a45
+  zh: d57aa1d55f8faec6
+/agent-note-automatic-x-opencode-session-header-on-opencode-routes/decision:
+  en: 83936e4b8bc6e4c7
+  zh: f5b2ff2f4625798f
+/agent-note-automatic-x-opencode-session-header-on-opencode-routes/alternatives-considered:
+  en: fa02eb8a26e1a7b4
+  zh: 30fb782c7e3a4fc5
+/agent-note-automatic-x-opencode-session-header-on-opencode-routes/consequences:
+  en: eebcbef9d12b1a2e
+  zh: 7d1e3f9ed66d7e78
+/agent-note-automatic-x-opencode-session-header-on-opencode-routes/testing:
+  en: 7959f76fb1d1ab6e
+  zh: 4a6732a3b5724d11

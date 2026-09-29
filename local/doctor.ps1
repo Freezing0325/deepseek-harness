@@ -106,7 +106,9 @@ $specGroups = @(
   @{ Name = 'A4 沙箱升级幂等'; Specs = @(
       'packages/sandbox/sandbox/tests/escalation.spec.ts',
       'packages/fs/tool-fs/tests/tools.spec.ts',
-      'packages/shell/tool-bash/tests/tools.spec.ts',
+      # tool-bash 的 spec 在 win32 被上游 vitest 配置整体排除（bash 要求 POSIX shell），
+      # 在这里跑只会得到 "No test files found"。它由上 Linux 通道或临时配置覆盖；
+      # pwsh 侧的同名用例已在上面这条里跑过。
       'packages/shell/tool-pwsh/tests/tools.spec.ts') },
   @{ Name = 'A7 session.events getter（TUI 读取）'; Specs = @('packages/core/session/tests/session.spec.ts') }
 )
