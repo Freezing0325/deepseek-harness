@@ -24,13 +24,9 @@ import { performance } from 'node:perf_hooks'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type { SettingsScope } from '@deepseek-ai/dsh-settings'
 import type { Agent, AgentStatus } from '@deepseek-ai/dsh-agent'
 import type { ApprovalRequest } from '@deepseek-ai/dsh-user-approval'
 import type { AskUserQuestionRequest } from '@deepseek-ai/dsh-user-questions'
-
-/** The settings namespace carrying the desktop-alert switches. */
-export const DESKTOP_NOTIFY_NAMESPACE = 'desktop-notify'
 
 /** The user-attention events the host can announce. */
 export type NotifyKind = 'approval' | 'question' | 'complete'
@@ -101,7 +97,12 @@ const desktopNotifyEventSettingsSchema: z<DesktopNotifyEventSettings> = z.object
   soundFile: z.string().default(''),
 })
 
-const desktopNotifySettingsSchema: z<DesktopNotifySettings> = z.object({
+/**
+ * The desktop-alert switches as the host plugin's `Config` field schema, so the
+ * settings form projects them from this plugin's own configuration instead of a
+ * separately registered namespace.
+ */
+export const desktopNotifySettingsSchema: z<DesktopNotifySettings> = z.object({
   enabled: z.boolean().default(true),
   flash: z.boolean().default(true),
   popup: z.boolean().default(false),
@@ -178,37 +179,32 @@ function messageFor(kind: NotifyKind, info: NotifyEventInfo): string {
   }
 }
 
+/** Alert configuration plus the injectable test seams for {@link installDesktopNotify}. */
+export interface DesktopNotifyOptions extends DesktopNotifyInternals {
+  /** The host plugin's configured switches; omitted uses the composed defaults. */
+  settings?: DesktopNotifySettings
+}
+
 /**
- * Install the desktop alert on this fiber. Registers the `desktop-notify`
- * settings namespace when a settings provider is mounted; the returned handle
- * reads the resolved value on every call, so edits to the user document apply
- * without a restart.
- * @param ctx - the calling plugin context.
- * @param internals - test seams; production callers omit them.
+ * Install the desktop alert on this fiber. The returned handle reads the
+ * settings it was installed with, so a configuration edit takes effect when the
+ * plugin is reloaded with the new `Config`.
+ * @param options - the resolved switches plus the test seams; production callers pass `settings`.
  * @returns the alert handle; a no-op off win32.
  */
-export function installDesktopNotify(
-  ctx: Context,
-  internals: DesktopNotifyInternals = {},
-): DesktopNotifyHandle {
-  const platform = internals.platform ?? process.platform
+export function installDesktopNotify(options: DesktopNotifyOptions = {}): DesktopNotifyHandle {
+  const { platform = process.platform, settings = DEFAULT_DESKTOP_NOTIFY_SETTINGS } = options
   if (platform !== 'win32') return { notify: () => {} }
 
   const scriptPath = fileURLToPath(new URL('../scripts/desktop-notify.ps1', import.meta.url))
-  const settings = ctx.get('settings')
-  const scope: SettingsScope<DesktopNotifySettings> | undefined =
-    settings === undefined
-      ? undefined
-      : settings.register(DESKTOP_NOTIFY_NAMESPACE, desktopNotifySettingsSchema)
-  const config = (): DesktopNotifySettings => scope?.get() ?? DEFAULT_DESKTOP_NOTIFY_SETTINGS
 
-  const now = internals.now ?? (() => performance.now())
-  const run = internals.spawn ?? defaultSpawn
+  const now = options.now ?? (() => performance.now())
+  const run = options.spawn ?? defaultSpawn
   let lastAlertAt = Number.NEGATIVE_INFINITY
 
   return {
     notify(kind, info = {}) {
-      const cfg = config()
+      const cfg = settings
       const event = cfg[kind]
       if (!cfg.enabled || !event.enabled) return
       if (!cfg.flash && !event.sound && !cfg.popup) return
@@ -258,11 +254,12 @@ export function installDesktopNotify(
  * the forwarded event semantics.
  * @param ctx - the web-host plugin context whose Cordis events carry the
  *   user-attention signals.
- * @param notify - the alert handle; defaults to {@link installDesktopNotify}.
+ * @param notify - the alert handle; defaults to {@link installDesktopNotify}
+ *   with the composed switches.
  */
 export function installDesktopAlertObservers(
   ctx: Context,
-  notify: DesktopNotifyHandle = installDesktopNotify(ctx),
+  notify: DesktopNotifyHandle = installDesktopNotify(),
 ): void {
   // Task-completion alert: the agent running → idle edge. Track the last seen
   // status per session so the alert fires once per run, and skip subagents —

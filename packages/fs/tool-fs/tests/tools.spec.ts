@@ -1000,8 +1000,8 @@ describe('sandbox escalation API (write/edit)', () => {
     expect(narrow.isError).toBe(false)
     expect(prompted).not.toHaveBeenCalled()
     expect(fs.stamped).toEqual([
-      { mode: 'danger-full-access', workspaceRoot: resolve('/session-project'), sessionId: SessionId('sess-fs-esc') },
-      { mode: 'danger-full-access', workspaceRoot: resolve('/session-project'), sessionId: SessionId('sess-fs-esc') },
+      { mode: 'danger-full-access', workspaceRoot: '/session-project', sessionId: SessionId('sess-fs-esc') },
+      { mode: 'danger-full-access', workspaceRoot: '/session-project', sessionId: SessionId('sess-fs-esc') },
     ])
   })
 

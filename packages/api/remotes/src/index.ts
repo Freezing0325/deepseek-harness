@@ -2,6 +2,7 @@
 
 import { homedir } from 'node:os'
 import type { Context } from '@deepseek-ai/cordis'
+import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type {
   TypertRemoteEventDispatch,
@@ -29,7 +30,13 @@ import type {} from '@deepseek-ai/dsh-settings/types'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import type {} from '@deepseek-ai/dsh-user-questions'
 import type {} from '@deepseek-ai/dsh-api-session-controller/types'
-import { installDesktopAlertObservers } from './desktop-notify.ts'
+import {
+  DEFAULT_DESKTOP_NOTIFY_SETTINGS,
+  desktopNotifySettingsSchema,
+  installDesktopAlertObservers,
+  installDesktopNotify,
+} from './desktop-notify.ts'
+import type { DesktopNotifySettings } from './desktop-notify.ts'
 
 export { API_REMOTE_FORWARDED_EVENTS } from './remote-events.ts'
 export type { ApiRemoteForwardedEvent } from './types.ts'
@@ -38,13 +45,30 @@ export { installDesktopNotify, installDesktopAlertObservers } from './desktop-no
 /** Required Host service: the Gateway owns the physical Remote stream mux. */
 export const inject = ['typertGateway']
 
-/** Host plugin body registering this application's selected Cordis event source. */
-export function apply(ctx: Context): void {
+/** Host-plugin configuration: the desktop-alert switches the settings form projects. */
+export interface Config {
+  /** Approval, question, and task-completion desktop alerts on win32; omission uses the composed switches. */
+  desktopNotify?: DesktopNotifySettings
+}
+
+/** Schemastery schema for {@link Config}; every switch carries its composed default. */
+export const Config: z<Config> = z.object({
+  desktopNotify: desktopNotifySettingsSchema.default({ ...DEFAULT_DESKTOP_NOTIFY_SETTINGS }),
+})
+
+/**
+ * Host plugin body registering this application's selected Cordis event source.
+ * @param ctx - the host plugin context.
+ * @param config - the resolved desktop-alert switches.
+ */
+export function apply(ctx: Context, config: Config = {}): void {
   ctx.effect(
     () => ctx.typertGateway.registerRemoteEvents(remoteEventSource(ctx), { home: homedir() }),
     'api-remotes: forwarded Cordis event source',
   )
-  installDesktopAlertObservers(ctx)
+  installDesktopAlertObservers(ctx, installDesktopNotify({
+    settings: config.desktopNotify ?? DEFAULT_DESKTOP_NOTIFY_SETTINGS,
+  }))
 }
 
 /** Create the sole queue and listener set consumed by the registered Gateway. */
