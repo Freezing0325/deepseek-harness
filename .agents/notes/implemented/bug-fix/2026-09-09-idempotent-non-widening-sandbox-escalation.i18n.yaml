@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-09-idempotent-non-widening-sandbox-escalation.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-09-idempotent-non-widening-sandbox-escalation.md
-2026-09-09-idempotent-non-widening-sandbox-escalation.md: 206c75e3f61d7b0fce70ab48bd30bd61caed7a80
-2026-09-09-idempotent-non-widening-sandbox-escalation.zh.md: 217523defb6ff880ec44c5b4eff7a5ffe0c3ed4e
+/agent-note-idempotent-non-widening-sandbox-escalations:
+  en: d2f6f148e0e1ef8c
+  zh: 9aa072e5f1e3a437
+/agent-note-idempotent-non-widening-sandbox-escalations/problem:
+  en: 021a238dc55fd1d7
+  zh: 6e9bea9df8e31813
+/agent-note-idempotent-non-widening-sandbox-escalations/decision:
+  en: 01f508cc604dcfb4
+  zh: c805b860b5c93f1a
+/agent-note-idempotent-non-widening-sandbox-escalations/alternatives-considered:
+  en: 819046e0e8c49076
+  zh: 7a6968dbb3890c73
+/agent-note-idempotent-non-widening-sandbox-escalations/consequences:
+  en: 36bd2262952c75e9
+  zh: a15e8fffbc80a7fa

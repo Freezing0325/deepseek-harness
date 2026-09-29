@@ -52,7 +52,7 @@ The payload-free `schedule/changed` event invalidates Schedule task queries; Cli
 <a id="desktop-alerts"></a>
 ## Desktop alerts
 
-On win32 the Host additionally installs observer listeners over the forwarded user-attention events — `agent/status` (top-level running → idle), `approval/request`, and `user-questions/request` — that spawn a fire-and-forget PowerShell child (`scripts/desktop-notify.ps1`) flashing the dsh browser taskbar icons and playing a per-kind sound, so a user working in another window notices the quiet Web badges. Each observer announces and then delegates, so an alert can never stall or change the forwarded event semantics; a failed or missing PowerShell is swallowed by contract. Behavior reads the `desktop-notify` settings namespace per call (hot-reloaded; see `src/desktop-notify.ts` for the switches and defaults).
+On win32 the Host additionally installs observer listeners over the forwarded user-attention events — `agent/status` (top-level running → idle), `approval/request`, and `user-questions/request` — that spawn a fire-and-forget PowerShell child (`scripts/desktop-notify.ps1`) flashing the dsh browser taskbar icons and playing a per-kind sound, so a user working in another window notices the quiet Web badges. Each observer announces and then delegates, so an alert can never stall or change the forwarded event semantics; a failed or missing PowerShell is swallowed by contract. Behavior reads the `desktop-notify` namespace the plugin declares as its own `Config` field (defaults in `src/desktop-notify.ts`), so the settings form projects those switches from this entry's configuration and an edit applies when the plugin reloads.
 
 <a id="build-boundary"></a>
 ## Build boundary

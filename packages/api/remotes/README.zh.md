@@ -52,7 +52,7 @@ Host entry 为每条 Client 流独立注册一组 allowlist listener 和一个�
 <a id="desktop-alerts"></a>
 ## 桌面提醒
 
-在 win32 上 Host 还会为三类用户注意力转发事件安装观察者监听——`agent/status`（顶层 running → idle）、`approval/request`、`user-questions/request`——触发 fire-and-forget PowerShell 子进程（`scripts/desktop-notify.ps1`）闪烁 dsh 浏览器任务栏图标并按类型播放提示音，让切到其它窗口的用户不会漏看安静的 Web 角标。每个观察者只提醒后继续委托，因此提醒永远不会阻塞或改变转发事件的语义；PowerShell 缺失或 spawn 失败按契约静默吞掉。行为逐次读取 `desktop-notify` settings namespace（热生效；开关与默认值见 `src/desktop-notify.ts`）。
+在 win32 上 Host 还会为三类用户注意力转发事件安装观察者监听——`agent/status`（顶层 running → idle）、`approval/request`、`user-questions/request`——触发 fire-and-forget PowerShell 子进程（`scripts/desktop-notify.ps1`）闪烁 dsh 浏览器任务栏图标并按类型播放提示音，让切到其它窗口的用户不会漏看安静的 Web 角标。每个观察者只提醒后继续委托，因此提醒永远不会阻塞或改变转发事件的语义；PowerShell 缺失或 spawn 失败按契约静默吞掉。行为读取本插件声明为自己 `Config` 字段的 `desktop-notify` 开关（默认值见 `src/desktop-notify.ts`），设置表单会据此把开关投影为该条目的配置项，修改在插件重新加载后生效。
 
 <a id="build-boundary"></a>
 ## 构建边界
