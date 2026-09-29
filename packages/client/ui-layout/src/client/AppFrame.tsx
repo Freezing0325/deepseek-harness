@@ -131,13 +131,16 @@ export function AppFrame({
   useSessions,
   usePanelInfo,
   useFoldedLandscape,
-  useSessionPendingInteraction,
+  useSessionStatus,
   actions,
   renderSlot,
   t,
 }: AppFrameProps) {
   const layoutInfo = useStore(state => state.layoutInfo)
-  const pendingInteraction = useSessionPendingInteraction(pending => pending.size > 0)
+  // Any Session waiting on the user (approval, question, plan review) drives
+  // the tab-title attention flash while the page is hidden.
+  const pendingInteraction = useSessionStatus(snapshot =>
+    [...snapshot.values()].some(status => status.pendingInteraction !== undefined))
   const frameRef = useRef<HTMLDivElement | null>(null)
   const viewport = layoutInfo.viewportWidth
   const foldedLandscape = useFoldedLandscape(matches => matches)

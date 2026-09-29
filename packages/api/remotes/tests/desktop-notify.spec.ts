@@ -1,7 +1,8 @@
 /**
  * Desktop alert for user-attention events: platform gating, per-kind settings
- * resolution (with hot reload), cooldown collapsing, the exact spawn contract,
- * and the web-host event observers wired in `installDesktopAlertObservers`.
+ * resolution from the host plugin's configuration, cooldown collapsing, the
+ * exact spawn contract, and the web-host event observers wired in
+ * `installDesktopAlertObservers`.
  */
 
 import { describe, expect, it, vi } from 'vitest'
@@ -13,7 +14,6 @@ import type { ApprovalOutcome } from '@deepseek-ai/dsh-user-approval'
 import {
   DEFAULT_DESKTOP_NOTIFY_SETTINGS,
   DEFAULT_FLASH_WINDOWS,
-  DESKTOP_NOTIFY_NAMESPACE,
   installDesktopAlertObservers,
   installDesktopNotify,
   type DesktopNotifyChild,
@@ -26,26 +26,20 @@ import {
 type SpawnCall = [command: string, args: string[], options: SpawnOptions]
 
 function harness(overrides: {
-  settings?: unknown
   value?: DesktopNotifySettings
   internals?: Partial<DesktopNotifyInternals>
 } = {}) {
   let clock = 0
-  const spawn = vi.fn((_command: string, _args: string[], _options: SpawnOptions): DesktopNotifyChild => {
+  const spawn = vi.fn((_command: string, _args: readonly string[], _options: SpawnOptions): DesktopNotifyChild => {
     return { unref: vi.fn() }
   })
-  const settings = overrides.settings ?? (overrides.value === undefined
-    ? undefined
-    : { register: () => ({ get: () => overrides.value }) })
-  const ctx = {
-    get: (key: string) => key === 'settings' ? settings : undefined,
-  } as unknown as Context
-  const handle = installDesktopNotify(ctx, {
+  const handle = installDesktopNotify({
     platform: 'win32',
     now: () => clock,
     spawn,
+    ...overrides.value === undefined ? {} : { settings: overrides.value },
     ...overrides.internals,
-  } as DesktopNotifyInternals)
+  })
   return {
     handle,
     spawn,
@@ -75,10 +69,7 @@ function observerHarness() {
 describe('installDesktopNotify', () => {
   it('is a no-op off win32', () => {
     const spawn = vi.fn(() => ({ unref: vi.fn() }))
-    const handle = installDesktopNotify(
-      { get: () => undefined } as unknown as Context,
-      { platform: 'linux', spawn },
-    )
+    const handle = installDesktopNotify({ platform: 'linux', spawn })
     handle.notify('approval', { toolName: 'bash' })
     expect(spawn).not.toHaveBeenCalled()
   })
@@ -151,22 +142,15 @@ describe('installDesktopNotify', () => {
     expect(spawn).toHaveBeenCalledTimes(2)
   })
 
-  it('reads the settings namespace per call and hot-reloads it', () => {
-    let value = { ...DEFAULT_DESKTOP_NOTIFY_SETTINGS }
-    const register = vi.fn(() => ({ get: () => value }))
-    const { handle, spawn } = harness({ settings: { register } })
-
-    expect(register).toHaveBeenCalledWith(DESKTOP_NOTIFY_NAMESPACE, expect.anything())
-    value = { ...DEFAULT_DESKTOP_NOTIFY_SETTINGS, enabled: false }
+  it('honors the configured switches', () => {
+    const { handle, spawn } = harness({
+      value: { ...DEFAULT_DESKTOP_NOTIFY_SETTINGS, enabled: false },
+    })
     handle.notify('approval', { toolName: 'bash' })
     expect(spawn).not.toHaveBeenCalled()
-
-    value = { ...DEFAULT_DESKTOP_NOTIFY_SETTINGS }
-    handle.notify('approval', { toolName: 'bash' })
-    expect(spawn).toHaveBeenCalledTimes(1)
   })
 
-  it('falls back to defaults without a settings provider', () => {
+  it('falls back to the composed defaults when the configuration omits the switches', () => {
     const { handle, calls } = harness()
     handle.notify('approval', { toolName: 'bash' })
     expect(calls()).toHaveLength(1)
@@ -217,10 +201,7 @@ describe('installDesktopNotify', () => {
 
   it('never throws on a failed spawn', () => {
     const spawn = vi.fn(() => { throw new Error('spawn failed') })
-    const handle = installDesktopNotify(
-      { get: () => undefined } as unknown as Context,
-      { platform: 'win32', now: () => 0, spawn },
-    )
+    const handle = installDesktopNotify({ platform: 'win32', now: () => 0, spawn })
     expect(() => handle.notify('approval', { toolName: 'bash' })).not.toThrow()
   })
 })
