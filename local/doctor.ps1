@@ -110,7 +110,10 @@ $specGroups = @(
       # 在这里跑只会得到 "No test files found"。它由上 Linux 通道或临时配置覆盖；
       # pwsh 侧的同名用例已在上面这条里跑过。
       'packages/shell/tool-pwsh/tests/tools.spec.ts') },
-  @{ Name = 'A7 session.events getter（TUI 读取）'; Specs = @('packages/core/session/tests/session.spec.ts') }
+  @{ Name = 'A7 session.events getter（TUI 读取）'; Specs = @('packages/core/session/tests/session.spec.ts') },
+  # 0.2.0 起 `.dsh-module-fallback` 的删除在 Windows 上会被实时扫描器/残留句柄短暂挡住，
+  # 拦不住就让整个 boot 失败是不划算的（见 A8 的用例）。
+  @{ Name = 'A8 启动容忍 Windows 占住的模块回落树'; Specs = @('packages/boot/app-boot/tests/profile.spec.ts') }
 )
 
 if ($Quick) {
