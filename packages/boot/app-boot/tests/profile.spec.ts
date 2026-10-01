@@ -34,6 +34,28 @@ import {
 } from '../src/index.ts'
 import { installRuntimeInterception } from '../src/profile-resolution/resolver.ts'
 
+/**
+ * One-shot removal fault for the `removeLinkProjections` case below. `node:fs`
+ * is a real ESM namespace here, so `vi.spyOn` cannot redefine `rmSync`; the
+ * mock delegates to the real implementation unless a failure is queued.
+ */
+const removalFault = vi.hoisted(() => ({ queued: undefined as unknown, calls: 0 }))
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>()
+  return {
+    ...actual,
+    rmSync: (...args: Parameters<typeof actual.rmSync>) => {
+      removalFault.calls += 1
+      if (removalFault.queued !== undefined) {
+        const fault = removalFault.queued
+        removalFault.queued = undefined
+        throw fault
+      }
+      return actual.rmSync(...args)
+    },
+  }
+})
+
 const tempRoots: string[] = []
 afterAll(() => {
   for (const root of tempRoots.splice(0)) rmSync(root, { recursive: true, force: true })
@@ -792,5 +814,37 @@ describe('removeLinkProjections', () => {
     removeLinkProjections(profile)
     removeLinkProjections(join(home, 'profiles', 'absent'))
     expect(existsSync(join(profile, 'node_modules', 'my-plugin', 'package.json'))).toBe(true)
+  })
+
+  it('survives a tree Windows still holds but rethrows any real removal fault', () => {
+    // A real-time scanner or a handle from the process that wrote the tree can
+    // make Windows refuse the removal for a moment. Every link that could shadow
+    // resolution is already unlinked by then, so the leftovers are disk, not a
+    // resolution hazard: refusing to boot over them is the worse failure. Faults
+    // that are not Windows withholding a busy tree must still escape.
+    const home = tmp()
+    const profile = join(home, 'profiles', 'web')
+    mkdirSync(join(profile, '.dsh-module-fallback', 'node_modules'), { recursive: true })
+
+    const cases: Array<{ thrown: unknown; swallowed: boolean; label: string }> = [
+      { thrown: Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' }), swallowed: true, label: 'EPERM' },
+      { thrown: Object.assign(new Error('EBUSY: resource busy'), { code: 'EBUSY' }), swallowed: true, label: 'EBUSY' },
+      { thrown: Object.assign(new Error('EIO: i/o error'), { code: 'EIO' }), swallowed: false, label: 'another errno' },
+      { thrown: new Error('no code property'), swallowed: false, label: 'an Error without a code' },
+      { thrown: 'a thrown non-Error', swallowed: false, label: 'a thrown non-Error' },
+    ]
+    for (const failure of cases) {
+      removalFault.queued = failure.thrown
+      const before = removalFault.calls
+      if (failure.swallowed) expect(() => { removeLinkProjections(profile) }, failure.label).not.toThrow()
+      else expect(() => { removeLinkProjections(profile) }, failure.label).toThrow()
+      expect(removalFault.calls).toBe(before + 1)
+      removalFault.queued = undefined
+      expect(existsSync(join(profile, '.dsh-module-fallback'))).toBe(true)
+    }
+
+    // The next launch retries the removal, and succeeds once the holder is gone.
+    removeLinkProjections(profile)
+    expect(existsSync(join(profile, '.dsh-module-fallback'))).toBe(false)
   })
 })

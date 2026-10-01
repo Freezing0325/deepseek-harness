@@ -279,7 +279,25 @@ export function removeLinkProjections(dir: string): void {
   for (const link of symlinksUnder(join(dir, 'node_modules'))) {
     if (pointsInto(link, ownedModules)) unlinkSync(link)
   }
-  rmSync(owned, { recursive: true, force: true })
+  try {
+    // The retry budget absorbs a transient Windows holder (a real-time scanner
+    // walking the tree of several hundred junctions, a handle from the release
+    // that wrote it). `maxRetries` defaults to 0, which turns that transient
+    // refusal into an immediate throw.
+    rmSync(owned, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+  } catch (error) {
+    // Every link that could shadow resolution was unlinked above, so a
+    // directory Windows still refuses to release is leftover disk, not a
+    // resolution hazard: the next launch retries the removal. Refusing to boot
+    // the harness over it is the worse failure, so only a real fault escapes.
+    if (!isHeldByAnotherProcess(error)) throw error
+  }
+}
+
+/** Whether a failed removal is Windows withholding a busy tree instead of a filesystem fault. */
+function isHeldByAnotherProcess(error: unknown): boolean {
+  if (!(error instanceof Error) || !('code' in error)) return false
+  return error.code === 'EPERM' || error.code === 'EBUSY'
 }
 
 /** Top-level and scoped entries under a node_modules directory that are symlinks or junctions. */
