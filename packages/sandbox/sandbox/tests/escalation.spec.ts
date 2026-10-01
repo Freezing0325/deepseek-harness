@@ -103,23 +103,15 @@ describe('approveEscalation', () => {
       .resolves.toBe(mode)
   })
 
-  it('reuses the standing mode for a request below it, never asking or lowering', async () => {
+  it('a narrower or unsupported target fails closed without asking', async () => {
     const seen: unknown[] = []
     const spy = ingredients({ approver: approver('allowed-once', r => seen.push(r)) })
-    // Below a top mode: nothing on WIDER_MODES is wider than danger-full-access,
-    // so a defensive retry must reuse it instead of dying as "not strictly wider".
-    await expect(approveEscalation(req({ requestedMode: 'workspace-write', effectiveMode: 'danger-full-access' as never }), spy))
-      .resolves.toBe('danger-full-access')
     await expect(approveEscalation(req({ requestedMode: 'read-only', effectiveMode: 'workspace-write' }), spy))
-      .resolves.toBe('workspace-write')
-    expect(seen).toEqual([])
-  })
-
-  it('an unsupported target fails closed without asking', async () => {
-    const seen: unknown[] = []
-    const spy = ingredients({ approver: approver('allowed-once', r => seen.push(r)) })
+      .rejects.toThrow(/not strictly wider than this call's current "workspace-write" mode/)
+    await expect(approveEscalation(req({ requestedMode: 'workspace-write', effectiveMode: 'danger-full-access' as never }), spy))
+      .rejects.toThrow(/not strictly wider/)
     await expect(approveEscalation(req({ requestedMode: 'unknown-mode' }), spy))
-      .rejects.toThrow(/not strictly wider than this call's current "read-only" mode/)
+      .rejects.toThrow(/not strictly wider/)
     expect(seen).toEqual([])
   })
 

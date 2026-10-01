@@ -23,7 +23,7 @@ import type { JobId, JobRegistry, JobView } from '@deepseek-ai/dsh-jobs'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import type {} from '@deepseek-ai/dsh-shell-env'
 import type { SandboxExecutionPolicy, SandboxMode } from '@deepseek-ai/dsh-sandbox'
-import { ESCALATION_TARGETS, approveEscalation, isNonWidening, sandboxPermissionsDescription, validateEscalationArgs } from '@deepseek-ai/dsh-sandbox'
+import { ESCALATION_TARGETS, approveEscalation, sandboxPermissionsDescription, validateEscalationArgs } from '@deepseek-ai/dsh-sandbox'
 import type { SandboxPolicyService } from '@deepseek-ai/dsh-sandbox-policy'
 import { DSH_ENV_PREFIX } from '@deepseek-ai/dsh-shell'
 import type { ShellExecRequest, ShellExecSpec, ShellExecution, ShellRunResult } from '@deepseek-ai/dsh-shell'
@@ -80,11 +80,7 @@ function validateBashArgs(args: BashToolArgs, effectiveMode: SandboxMode | undef
   if (args.timeoutMs !== undefined && (!Number.isFinite(args.timeoutMs) || args.timeoutMs <= 0)) {
     throw new Error(`invalid timeoutMs: expected a positive number, got ${JSON.stringify(args.timeoutMs)}`)
   }
-  // A redundant escalation (requested mode at or below the effective mode) asks
-  // for no capability the call lacks: its pairing is not forced, and the call
-  // runs under the standing policy instead of failing as a malformed ask.
-  if (args.sandbox_permissions !== undefined && effectiveMode !== undefined
-    && isNonWidening(args.sandbox_permissions, effectiveMode)) return
+  if (args.sandbox_permissions !== undefined && args.sandbox_permissions === effectiveMode) return
   const justification = args.sandbox_permissions === undefined && args.justification?.trim() === ''
     ? undefined
     : args.justification

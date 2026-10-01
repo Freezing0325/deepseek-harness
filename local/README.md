@@ -34,12 +34,19 @@
 | A1 | OpenCode `x-opencode-session` 头（源码侧） | `packages/llm/llm-pi-ai/tests/session-header.spec.ts` |
 | A2 | 桌面提醒 desktop-notify（审批/提问/完成，win32） | `packages/api/remotes/tests/desktop-notify.spec.ts` |
 | A3 | 标签页待审批闪烁 | `packages/client/ui-layout/tests/document-title.client.spec.tsx` |
-| A4 | 沙箱升级幂等（重复的非扩权升级请求不再报错） | `packages/sandbox/sandbox/tests/escalation.spec.ts`、`packages/fs/tool-fs/tests/tools.spec.ts`、`packages/shell/tool-pwsh/tests/tools.spec.ts`（`tool-bash` 的 spec 在 win32 被上游测试配置排除，需专用配置才跑得起来） |
+| A4 | 沙箱升级幂等 —— **已停用，改用官方口径**（0.2.0 上游自己做了"相等模式即幂等"） | 上游自己的 spec 仍在跑：`packages/sandbox/sandbox/tests/escalation.spec.ts`、`packages/fs/tool-fs/tests/tools.spec.ts`、`packages/shell/tool-pwsh/tests/tools.spec.ts`（`tool-bash` 的 spec 在 win32 被上游测试配置排除，需专用配置才跑得起来） |
 | A5 | 一键更新脚本 + git 指南（本目录的宿主） | 文件存在性断言（doctor 内置，无需 spec） |
 | A6 | Agent Note 文档配对记录 | 文件存在性断言（doctor 内置） |
 | A7 | `session.events` getter（`deepseek tui` 读取；快照重构后变成 undefined） | `packages/core/session/tests/session.spec.ts`（`events getter` 两条用例） |
 
 > 补丁的提交号不在这里登记：rebase 会重写它们，写死必然腐烂。要看某条补丁的当前提交，用 `git log --oneline --grep='<提交主题>'`（主题见本表第二列）。
+
+> **A4 的本地泛化版本没有丢**：它寄存在分支 `a4-nonwidening-local`（含源码、spec、文档与那条设计笔记）。官方口径下如果又碰到 `not strictly wider` 报错（`danger-full-access` 会话里模型防御性地带 `sandbox_permissions`），把那条分支的改动捡回来即可：
+>
+> ```bash
+> git checkout a4-nonwidening-local -- packages/sandbox packages/fs/tool-fs packages/shell/tool-bash packages/shell/tool-pwsh
+> # 文档与笔记按需一起捡；捡回后必须重跑 pnpm build 与 A4 探针
+> ```
 
 > A4 与 A1 都属于**上游也想要**的修复（A4 上游至今没有、A1 有人独立写了同样实现）。能提到上游就尽早提，合并后这条补丁永久消失，连 npm 侧都不用再补。
 
