@@ -38,6 +38,7 @@
 | A5 | 一键更新脚本 + git 指南（本目录的宿主） | 文件存在性断言（doctor 内置，无需 spec） |
 | A6 | Agent Note 文档配对记录 | 文件存在性断言（doctor 内置） |
 | A7 | `session.events` getter（`deepseek tui` 读取；快照重构后变成 undefined） | `packages/core/session/tests/session.spec.ts`（`events getter` 两条用例） |
+| A8 | 启动时容忍 Windows 短暂占住 `.dsh-module-fallback`：`EPERM`/`EBUSY` 只跳过删除（此时链接已解绑，剩下的只是磁盘残留），其它错误照旧抛出 | `packages/boot/app-boot/tests/profile.spec.ts`（`survives a tree Windows still holds ...`） |
 
 > 补丁的提交号不在这里登记：rebase 会重写它们，写死必然腐烂。要看某条补丁的当前提交，用 `git log --oneline --grep='<提交主题>'`（主题见本表第二列）。
 
