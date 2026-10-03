@@ -119,6 +119,31 @@ if ($installed -eq $tuiVersion) {
 Note "dsh-tui 0.12.0 peers require dsh 0.2.0-rc, so the TUI only runs while the tree above is the 0.2.0 one"
 
 # ---------------------------------------------------------------------------
+Say "checking the launcher contract"
+# The launchers live outside git (PORTING.md section 2 keeps them per machine),
+# so the one thing that silently ruins this setup is an OLD launcher that never
+# reads the pointers: the tree would be 0.2.0 while the profile stayed "web", and
+# the Web UI would come up unable to save any setting. Fail loud instead.
+$launcherContract = @(
+  @{ Label = '~\.dsh\custom.cmd'; Path = (Join-Path $dshHome 'custom.cmd'); Needs = @('tree.txt', '.dsh-profile') },
+  @{ Label = '~\.dsh\bin\dsh.cmd'; Path = (Join-Path $dshHome 'bin\dsh.cmd'); Needs = @('tree.txt', '.dsh-profile') },
+  @{ Label = '~\.dsh\bin\deepseek.cmd'; Path = (Join-Path $dshHome 'bin\deepseek.cmd'); Needs = @('--no-open', 'taskkill') }
+)
+foreach ($entry in $launcherContract) {
+  if (-not (Test-Path $entry.Path)) {
+    Note "$($entry.Label) is missing - copy it from the other machine (PORTING.md section 2)"
+    continue
+  }
+  $text = Get-Content $entry.Path -Raw
+  $missing = @($entry.Needs | Where-Object { $text -notmatch [regex]::Escape($_) })
+  if ($missing.Count -gt 0) {
+    Note "$($entry.Label) does not mention $($missing -join ', ') - it predates the pointer scheme; refresh it from the other machine (PORTING.md section 2)"
+  } else {
+    Ok "$($entry.Label) carries the current contract"
+  }
+}
+
+# ---------------------------------------------------------------------------
 Say "done - verify next"
 @"
    deepseek stop
