@@ -148,7 +148,7 @@ Say "done - verify next"
 @"
    deepseek stop
    deepseek web                 # then look at %USERPROFILE%\.dsh\web.out.log
-   node D:\Code\dsh-web-check.mjs            # renders the page headlessly; PASS = every client entry activated
+   node D:\Code\dsh-kit\tools\dsh-web-check.mjs   # a helper that only exists on this machine (not in the repo): renders the page headlessly; PASS = every client entry activated
    deepseek tui                 # the model picker must list the routes from local/profile/dsh-tui/cordis.patch.yml
 
 known-inert rows in this profile (upstream has no 0.2.0 build yet, or the row poisons the settings domain):
