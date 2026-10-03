@@ -251,7 +251,7 @@ pwsh -File local\setup-020.ps1                   # 写 profile、装插件、指
 
 ```powershell
 deepseek stop ; deepseek web            # 然后看 %USERPROFILE%\.dsh\web.out.log 里的 token URL
-node D:\Code\dsh-web-check.mjs          # 无头浏览器加载页面：PASS = 每个客户端条目都激活了
+node D:\Code\dsh-kit\tools\dsh-web-check.mjs   # 本机本地脚本（不在仓库里，那台可能没有）：无头浏览器加载页面，PASS = 每个客户端条目都激活了
 deepseek tui                            # 模型选择器里应出现第八节 8.3 的那些 provider
 ```
 
@@ -288,5 +288,5 @@ pnpm dsh --profile dsh-tui --dump-config | Select-String 'opencode-go-chat|parat
 
 - `~\.dsh\tree.txt`：一行绝对路径，`~\.dsh\custom.cmd` 与 `~\.dsh\bin\dsh.cmd` 都读它。
 - `<树>\.dsh-profile`：一行 profile 名（0.2.0 树里是 `web020`）。两个启动器会把命令行里的 `web` 换成 `--profile <名字>`。
-- 切版本 = 改 `tree.txt` + 重启服务：`D:\Code\切到0.2.0.cmd` / `D:\Code\回退到0.1.5.cmd`。
+- 切版本 = 改 `tree.txt` + 重启服务：`D:\Code\dsh-kit\switch\切到0.2.0.cmd` / `D:\Code\dsh-kit\switch\回退到0.1.5.cmd`。
 - `deepseek tui` 也跟 `tree.txt` 走（宿主是裸 `dsh`）。**dsh-tui 0.12.0 的 peer 只认 0.2.0-rc 系**，所以回退到 0.1.5 后 TUI 会被兼容性预检跳过；要在 0.1.5 用 TUI 就重装 `@deepseek-harness-tui/dsh-tui@0.11.2`。
