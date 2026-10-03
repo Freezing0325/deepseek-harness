@@ -316,3 +316,21 @@ pwsh -File D:\Code\dsh-kit\tools\fix-pnpm-virtual-store.ps1 -WhatIf  # 只看不
 ```
 
 `local\setup-020.ps1` 每次运行也会检查这一条并提示，所以另一台机器不会踩同一个坑。**别被那句"建议 npm i -g"骗去重装 dsh。**
+
+### 8.6 动过 `~\.dsh\sessions\` 就跑完整性检查
+
+会话日志第一行内嵌它自己的 `cwd`，store 用它反推这条日志**该待在哪个目录**（`assertStoredIdentity` → `generationLogPath` → `projectKey`，`packages/session/session-persistence-jsonl/src/`）。所以**搬会话目录必须同时改 header 的 `cwd`**，否则那条日志被判 `corrupt session log` —— 而它是普通 `Error`，`listArtifacts()` 吞不掉（只吞 `SessionFormatUnsupportedError` / `SessionPersistenceCorruptionError`），于是 `WorkspaceRegistry.init` reject → `workspaceRegistry` 永不激活 → 所有依赖工作区的插件停在 `pending`：**服务能起、页面能开、客户端体检还报 PASS，但工作区列表是空的、TUI 也打不开。**2026-10-03 本机就是这么宕的（详见修复说明 §14）。
+
+```powershell
+node D:\Code\dsh-kit\tools\dsh-session-integrity.mjs check      # 只读；不一致 exit 1
+node D:\Code\dsh-kit\tools\dsh-session-integrity.mjs relocate --from <旧cwd> --to <新cwd> --apply
+```
+
+一条命令看全部健康度（含上面这条、pnpm 陷阱、主机日志判据、页面）：
+
+```powershell
+node D:\Code\dsh-kit\tools\dsh-preflight.mjs                 # 11 项；exit 1 = 有问题
+node D:\Code\dsh-kit\tools\dsh-preflight.mjs --no-browser     # 快跑，不驱动浏览器
+```
+
+**客户端页面 PASS 不等于主机侧健康** —— 验收只认预检。
