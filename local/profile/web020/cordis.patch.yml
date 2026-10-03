@@ -1,0 +1,293 @@
+# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries (id-targeted config
+# overrides, disables, and insert lists; `!!js` expressions allowed).
+
+# proxy-bridge: DSH 出站代理分流插件（opencode.ai 等海外网关走 Clash，国内服务直连）
+# 由 2026-08-31 gpt-5.6-luna 地区限制排查安装；等效 TUN 但仅作用于 DSH 进程。
+- insert:
+    - id: proxy-bridge
+      name: file:///C:/Users/YDELL/.dsh/plugins/proxy-bridge.cjs
+
+# Fracture Mechanics Note plugin (installed by note-launcher.ps1)
+#
+# `disabled` is a !!js condition, so a moved or renamed note folder can no
+# longer abort the whole boot ("plugin tree failed to load: Cannot find
+# module") - the entry is skipped unless BOTH the switch file
+# (~/.dsh/notes-enabled) and the plugin file itself exist. Toggle with:
+#   deepseek note on | off | status
+- insert:
+    - id: fracture-note-plugin
+      name: file:///D:/%E5%B0%B9%E6%80%9D%E6%98%B1/%E5%AD%A6%E4%B9%A0/%E5%AD%A6%E4%B9%A0/%E7%A0%94%E4%B8%80/%E7%A0%94%E4%B8%80%E4%B8%8B/%E6%96%AD%E8%A3%82%E5%8A%9B%E5%AD%A6/%E6%96%AD%E8%A3%82%E5%8A%9B%E5%AD%A6%E7%AC%94%E8%AE%B0%E6%8F%92%E4%BB%B6.cjs
+      disabled: !!js "!(process.getBuiltinModule('node:fs').existsSync((process.env.U\
+        SERPROFILE||'') + '/.dsh/notes-enabled') &&
+        process.getBuiltinModule('node:fs').existsSync('D:/尹思昱/学习/学习/研一/研一下/断裂力\
+        学/断裂力学笔记插件.cjs'))"
+      config:
+        workspaceDir: 'D:\尹思昱\学习\学习\研一\研一下\断裂力学'
+        noteFile: 断裂力学笔记.html
+
+# English Writing Note plugin (installed by note-launcher.ps1)
+# Same !!js guard as the fracture note above: skipped when the switch file or
+# the plugin file is missing, so a moved folder cannot break the boot.
+- insert:
+    - id: english-note-plugin
+      name: file:///D:/%E5%B0%B9%E6%80%9D%E6%98%B1/%E5%AD%A6%E4%B9%A0/%E5%AD%A6%E4%B9%A0/%E7%A1%95%E5%8D%9A%E8%BF%9E%E8%AF%BB/%E8%8B%B1%E8%AF%AD%E5%86%99%E4%BD%9C%E5%86%B2%E5%88%BA%E6%8F%92%E4%BB%B6.cjs
+      disabled: !!js "!(process.getBuiltinModule('node:fs').existsSync((process.env.U\
+        SERPROFILE||'') + '/.dsh/notes-enabled') &&
+        process.getBuiltinModule('node:fs').existsSync('D:/尹思昱/学习/学习/硕博连读/英语写作冲\
+        刺插件.cjs'))"
+      config:
+        workspaceDir: 'D:\尹思昱\学习\学习\硕博连读'
+        noteFile: 英语写作冲刺笔记.html
+# dsh-tui 0.12.0 is the 0.2.0 line (its peers list `0.2.0-rc.1 || 0.2.0-rc.2`),
+# so the bundle loads here instead of being skipped. Its six web-plane rows
+# (workspaces / command-trees / settings-sections / scenes / plugin-host /
+# extensions) are enabled by default and need no override, and its host-plane
+# duplicates (storage*, workspace, code-runtime, webserver, cordis-host-runner)
+# self-disable through `!!js` guards when the official rows exist. The
+# interactive front door DOES need one: it binds a TTY, seeds the first
+# workspace, and disposes the whole app tree when it unmounts, which belongs to
+# the standalone `deepseek tui` profile, not to the web one. `working-activity`
+# was an 0.1.5-era entry that no longer exists in 0.2.0, so it stays out.
+- id: dsh-tui
+  disabled: true
+# dsh-better-sidebar 仍 import 已被新版 dsh-settings 移除的 settingsNamespace
+# （npm 最新 0.17.1 亦未适配），无兼容版本可用，禁用直至上游适配。
+- id: web-ui-better-sidebar
+  disabled: true
+# @linxin666/dsh-remote-web-ui@0.3.6 声明注入 apiProxy 服务，新版 dsh 已移除该
+# 服务且此包无更高版本（0.3.6 即最新），禁用直至上游适配。
+- id: web-ui-remote-web-ui
+  disabled: true
+# @linxin666/dsh-client-ui-aionui-panel@0.3.6（无更高版本）的 client 端直接 require
+# 新版已删除的 @deepseek-ai/dsh-client-runtime/client，浏览器端模块加载会崩溃。
+# 注意 entry id 是 web-ui-dsh-aionui-panel（见 dsh-web-ui-all 的 cordis.patch.yml）。
+- id: web-ui-dsh-aionui-panel
+  disabled: true
+
+# --- dsh 0.2.0：尚未适配的四个插件（本 profile 专有，0.1.5 的 web profile 不受影响）---
+# 下面四个包的 client 端 inject 了 `settingsScope` 服务，而 0.2.0 的客户端设置域
+# 已把该服务换成 settingsSchema / configForms（src: packages/client/ui-settings）。
+# 服务不存在 => fiber 永久 pending => 浏览器端 boot-client 的 assertEntriesActive
+# 抛错，整页显示 "Failed to load plugins / web boot: N entries did not activate"，
+# Web UI 完全打不开（一个 pending 条目就足以打死整个客户端）。
+# 这四个包到 2026-10-01 为止的最新版仍 inject settingsScope：
+#   dsh-perf 0.3.14 / dsh-doctor 0.3.24 / dsh-desktop-launcher 0.3.13 /
+#   dsh-tool-describe-image 0.3.24（均已确认，无 0.4.x）。
+# 作者为其余六个包发布了 0.2.0 线（0.4.x），见 pnpm-workspace.yaml 的 overrides。
+# 等这四个也出 0.4.x：把 overrides 里的 0.3.12 提到新版，并删掉下面四条 disabled。
+- id: web-ui-dsh-perf
+  disabled: true
+- id: web-ui-doctor
+  disabled: true
+- id: web-ui-desktop-launcher
+  disabled: true
+- id: web-ui-describe-image
+  disabled: true
+
+- id: ui-dsh-opencode-usage
+  name: "@wingsky-1/dsh-opencode-usage"
+  disabled: true
+
+- id: xmanrui-dsh-im
+  disabled: true
+- id: ui-dsh-opencode-usage
+  disabled: true
+- id: ui-settings-general
+  name: "@deepseek-ai/dsh-client-ui-settings-general"
+  config:
+    welcomeNoticeVersion: 2026-09-28.1
+- id: agent-default-model
+  name: "@deepseek-ai/dsh-agent-default-model"
+  config:
+    provider: opencode-go-chat
+    model: deepseek-flash
+    reasoningEffort: high
+- id: llm-pi-ai
+  name: "@deepseek-ai/dsh-llm-pi-ai"
+  config:
+    providers:
+      openai:
+        baseURL: https://llmapi.paratera.com/v1
+        api: openai-completions
+        compat:
+          thinkingFormat: deepseek
+          supportsReasoningEffort: true
+        models:
+          - id: DeepSeek-V4-Flash
+            name: DeepSeek-V4-Flash
+            contextWindow: 1000000
+            maxTokens: 65536
+            reasoningEfforts:
+              off: null
+              low: low
+              high: high
+              max: max
+        apiKeyEnv: OPENAI_API_KEY
+      zai-coding-cn:
+        models:
+          - id: glm-4.5-air
+            name: GLM-4.5-Air
+            contextWindow: 131072
+            maxTokens: 98304
+          - id: glm-4.7
+            name: GLM-4.7
+            contextWindow: 204800
+            maxTokens: 131072
+          - id: glm-5-turbo
+            name: GLM-5-Turbo
+            contextWindow: 200000
+            maxTokens: 131072
+          - id: glm-5.1
+            name: GLM-5.1
+            contextWindow: 200000
+            maxTokens: 131072
+          - id: glm-5.2
+            name: GLM-5.2
+            contextWindow: 1000000
+            maxTokens: 131072
+          - id: glm-5v-turbo
+            name: GLM-5V-Turbo
+            contextWindow: 200000
+            maxTokens: 131072
+        apiKeyEnv: ZAI_CODING_CN_API_KEY
+      opencode-go:
+        apiKeyEnv: OPENCODE_GO_API_KEY
+        models:
+          - id: deepseek-v4-flash
+            name: DeepSeek V4 Flash
+            contextWindow: 1000000
+            maxTokens: 384000
+          - id: deepseek-v4-pro
+            name: DeepSeek V4 Pro
+            contextWindow: 1000000
+            maxTokens: 384000
+          - id: kimi-k3
+            name: Kimi K3 (2x usage)
+            contextWindow: 1048576
+            maxTokens: 131072
+      opencode-go-customized:
+        displayName: OpenCode Go · Responses
+        apiKeyEnv: OPENCODE_GO_CUSTOMIZED_API_KEY
+        api: openai-responses
+        baseURL: https://opencode.ai/zen/go/v1
+        models:
+          - id: gpt-5.6-luna
+            name: GPT 5.6 Luna
+            contextWindow: 272000
+            maxTokens: 65536
+          - id: grok-4.6
+            name: Grok 4.6
+            contextWindow: 200000
+            maxTokens: 131072
+          - id: muse-spark-1.2-contributor
+            name: Muse Spark 1.2 Contributor
+            contextWindow: 262144
+            maxTokens: 32768
+      opencode-go-chat:
+        displayName: OpenCode Go · Chat
+        apiKeyEnv: OPENCODE_GO_CUSTOMIZED_API_KEY
+        api: openai-completions
+        baseURL: https://opencode.ai/zen/go/v1
+        reasoning: high
+        models:
+          - id: glm-5.3-flash
+            name: GLM-5.3-Flash
+            contextWindow: 200000
+            maxTokens: 131072
+          - id: glm-5.3
+            name: GLM-5.3
+            contextWindow: 1000000
+            maxTokens: 131072
+          - id: longcat-2.0
+            name: LongCat-2.0
+            contextWindow: 1000000
+            maxTokens: 65536
+          - id: deepseek-v4-flash-vision-exp
+            name: DeepSeek V4 Flash Vision Exp
+            contextWindow: 1000000
+            maxTokens: 384000
+            input:
+              - text
+              - image
+          - id: hy4-preview
+            name: Hy4 preview
+            contextWindow: 262144
+            maxTokens: 65536
+          - id: deepseek-flash
+            name: DeepSeek V4.1 Flash
+            contextWindow: 1000000
+            maxTokens: 384000
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              off: off
+              low: low
+              high: high
+              max: max
+      opencode-go-messages:
+        displayName: OpenCode Go · Messages
+        apiKeyEnv: OPENCODE_GO_CUSTOMIZED_API_KEY
+        api: anthropic-messages
+        baseURL: https://opencode.ai/zen/go
+        models:
+          - id: minimax-m2.5
+            name: MiniMax M2.5
+            contextWindow: 1000000
+            maxTokens: 131072
+          - id: qwen3.8-max
+            name: Qwen3.8 Max
+            contextWindow: 1000000
+            maxTokens: 65536
+          - id: qwen3.8-flash
+            name: Qwen3.8 Flash
+            contextWindow: 1000000
+            maxTokens: 65536
+      paratera:
+        displayName: 并行智算云
+        apiKeyEnv: PARATERA_API_KEY
+        api: openai-completions
+        baseURL: https://llmapi.paratera.com
+        models:
+          - id: DeepSeek-V4.1-Flash
+            name: DeepSeek-V4.1-Flash
+            contextWindow: 1000000
+            maxTokens: 384000
+- id: ui-conversation
+  name: "@deepseek-ai/dsh-client-ui-conversation"
+  config:
+    busyEnter: steer
+- id: ui-theme
+  name: "@deepseek-ai/dsh-client-ui-theme"
+  config:
+    preference: system
+- id: web-ui-pet
+  name: "@linxin666/dsh-pet"
+  config:
+    visible: false
+    size: 160
+    right: 24
+    bottom: 120
+    petId: whale-girl
+
+# --- 2026-10-03：dsh-tui 的六个 web-plane 条目在 0.2.0-rc.2 下会毒死整个设置域 ---
+# 症状：任何 settings/mutate 都被拒（settings/rejected:
+#   "dsh-tui: root.events.emit is unavailable from a plugin activation"），
+# 于是欢迎弹窗永远确认不了（"暂时无法保存确认状态"），设置面板里也写不进任何值。
+# 根因是这些行在 settings 重载路径上于 plugin activation 期间 emit root events，
+# 违反 cordis 的 invariant。web020 是 Web profile，用不到 TUI 的 Host seam，
+# 故整组禁用（主条目 dsh-tui 见上方第 52 行，早已 disabled）。
+# 上游修好或 dsh-tui 再发新版后，删掉这六条即可恢复。
+- id: dsh-tui-workspaces
+  disabled: true
+- id: dsh-tui-command-trees
+  disabled: true
+- id: dsh-tui-settings-sections
+  disabled: true
+- id: dsh-tui-scenes
+  disabled: true
+- id: dsh-tui-plugin-host
+  disabled: true
+- id: dsh-tui-extensions
+  disabled: true

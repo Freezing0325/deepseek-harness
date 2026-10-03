@@ -1,0 +1,48 @@
+packages:
+  - .
+
+nodeLinker: hoisted
+autoInstallPeers: false
+allowBuilds:
+  cloudflared: true
+  cpu-features: true
+  node-pty: true
+  ssh2: true
+minimumReleaseAgeExclude:
+  - dshmarket@1.40.0
+  - '@linxin666/dsh-client-ui-market@0.4.4'
+  - '@linxin666/dsh-client-ui-skin-center@0.4.4'
+  - '@linxin666/dsh-client-ui-task-board@0.4.4'
+  - '@linxin666/dsh-client-ui-web-ui-settings@0.4.4'
+  - '@linxin666/dsh-pet@0.4.4'
+  - '@linxin666/dsh-ssh@0.4.4'
+  - '@linxin666/dsh-desktop-launcher@0.3.12'
+  - '@linxin666/dsh-doctor@0.3.12'
+  - '@linxin666/dsh-tool-describe-image@0.3.12'
+  - '@linxin666/dsh-perf@0.3.12'
+  - '@xmanrui/dsh-im@4.19.2'
+
+# This is the dsh 0.2.0 profile. It exists beside `web` (the 0.1.5 profile) so a
+# version switch never rewrites either profile's plugin set: 0.2.0 boots this
+# one, and the fallback to 0.1.5 keeps using `web` exactly as before.
+#
+# The plugin author published a dsh 0.2.0 line (0.4.x, engines.dsh >=0.2.0-rc.1)
+# for six packages. The four listed at 0.3.12 below have no 0.2.0 release yet:
+# their browser half still injects the `settingsScope` service that upstream
+# 0.2.0 deleted, so they are pinned AND disabled in cordis.patch.yml. Bump them
+# here and drop their `disabled` rows once their 0.4.x line ships.
+overrides:
+  # dsh 0.2.0 line: these inject the new `configForms` service instead of the
+  # removed `settingsScope`.
+  '@linxin666/dsh-client-ui-market': 0.4.4
+  '@linxin666/dsh-client-ui-task-board': 0.4.4
+  '@linxin666/dsh-pet': 0.4.4
+  '@linxin666/dsh-ssh': 0.4.4
+  '@linxin666/dsh-client-ui-skin-center': 0.4.4
+  '@linxin666/dsh-client-ui-web-ui-settings': 0.4.4
+  # No 0.2.0 release yet (0.3.24 / 0.3.14 / 0.3.13 / 0.3.24 are still the
+  # newest and still inject settingsScope). Kept at the proven 0.1.5-era pin.
+  '@linxin666/dsh-tool-describe-image': 0.3.12
+  '@linxin666/dsh-desktop-launcher': 0.3.12
+  '@linxin666/dsh-doctor': 0.3.12
+  '@linxin666/dsh-perf': 0.3.12

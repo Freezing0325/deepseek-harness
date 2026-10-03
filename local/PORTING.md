@@ -3,7 +3,9 @@
 > 用途：本机（"这台"）和另一台电脑（"那台"）共用同一个 fork，但**只有仓库里的东西能靠 git 同步**。
 > 本文件记录 git 管不到、必须人工核对的部分，以及每次官方更新后那台要做的事。
 >
-> 最后更新：2026-09-10 | 本机：`E:\Code\deepseek-harness`（用户 `16034`）| 官方基线：**0.1.5-rc.1**
+> 最后更新：2026-10-03 | 本机：0.2.0 树 `D:\Code\dsh-020`（worktree，分支 `my-custom-020`）+ 0.1.5 冷备树 `D:\Code\deepseek-harness` | 官方基线：**0.2.0-rc.2**
+>
+> **0.2.0 环境怎么在那台落地 → 直接看第八节（含 `local\setup-020.ps1` 一条命令）。**
 
 ---
 
@@ -122,6 +124,8 @@ npm 全局若又生成了**无扩展名 shim**（`%APPDATA%\npm\dsh`、`%APPDATA
 
 ## 四、profile（`~/.dsh/profiles/`）
 
+> 本节描述的是 **0.1.5 时代**的 `web` profile。**0.2.0 的 profile（`web020` 与 `dsh-tui`）见第八节**，它们的定义已经进仓库（`local/profile/`），不再靠手工抄。
+
 ### 4.1 web profile
 
 本机 `package.json` 的 `dsh.profile.bundles`（后三个是 npm 上的第三方插件，profile 目录里 `pnpm install` 之后才有）：
@@ -202,6 +206,8 @@ node local/patch-opencode-session.cjs
 
 ## 七、这次升级两台各自要做的总结
 
+> 本节是 **0.1.5 那次**升级的收尾表，保留作历史对照；**0.2.0 的落地见第八节**。
+
 | 步骤 | 这台 | 那台 |
 |---|---|---|
 | `git reset --hard mine/my-custom`（历史被重写） | 已完成 | **必做** |
@@ -214,3 +220,73 @@ node local/patch-opencode-session.cjs
 | 默认模式 `mode.txt` | `web` | 按喜好 |
 
 任何一项对不上，**先按本文件核对，再决定改哪边**；改完记得把结论写回本文件（它就是为这件事存在的）。
+
+---
+
+## 八、0.2.0 环境落地（2026-10-03，当前主线）
+
+本机的形态是**一棵 0.2.0 树 + 两个 profile + 两个指针**，0.1.5 树保留为冷备（切换是秒级的）：
+
+| 角色 | 本机值 | 仓库里的位置 |
+|---|---|---|
+| 0.2.0 树 | `D:\Code\dsh-020`（git worktree，分支 `my-custom-020`，已推 `mine/my-custom-020`） | 就是这个仓库的 `my-custom-020` 分支 |
+| 0.1.5 树（冷备） | `D:\Code\deepseek-harness`（分支 `my-custom`；**没有** `.dsh-profile`，所以仍走 `web` profile） | 同一仓库的 `my-custom` 分支 |
+| 0.2.0 Web profile | `~\.dsh\profiles\web020` | `local/profile/web020/`（3 个文件） |
+| TUI profile | `~\.dsh\profiles\dsh-tui` | `local/profile/dsh-tui/`（2 个文件） |
+| 指针 | `~\.dsh\tree.txt` 选树；`<树>\.dsh-profile` 选该树的 profile | 机器本地，**不进 git**（已在 `.gitignore` 里） |
+
+### 8.1 那台的一条命令
+
+```powershell
+git fetch mine ; git checkout my-custom-020      # 或 git pull mine my-custom-020
+pnpm install ; pnpm run build                    # 必须产出 apps/web/dist/index.html
+pwsh -File local\setup-020.ps1                   # 写 profile、装插件、指指针、装全局 TUI
+```
+
+`local\setup-020.ps1` 幂等且不删东西：已存在且内容不同的文件只提示不覆盖（要覆盖加 `-Force`，旧文件留 `.bak-<时间戳>`）。它做四件事：写两个 profile（缺的才写）→ 各自 `pnpm install` → 写两个指针 → 装全局 `@deepseek-harness-tui/dsh-tui@0.12.0`。
+
+它**不做**（属于 git/系统层，见本文件 §2、§3、§六）：凭据 `~\.dsh\.credentials.yaml`、启动器文件 `~\.dsh\bin\*.cmd` 与 `~\.dsh\custom.cmd`、以及 `pnpm run build`。
+
+装完自检：
+
+```powershell
+deepseek stop ; deepseek web            # 然后看 %USERPROFILE%\.dsh\web.out.log 里的 token URL
+node D:\Code\dsh-web-check.mjs          # 无头浏览器加载页面：PASS = 每个客户端条目都激活了
+deepseek tui                            # 模型选择器里应出现第八节 8.3 的那些 provider
+```
+
+### 8.2 `web020` profile 里有什么、为什么
+
+- `package.json`：bundles（`dsh-base`、`dsh-web-app`、`dshmarket`、`@linxin666/dsh-web-ui-all`、`@deepseek-harness-tui/dsh-tui` …）与依赖。
+- `pnpm-workspace.yaml`：`overrides` 把六个 `@linxin666/*` 子包钉在**作者为 0.2.0 发布的 0.4.4 线**；四个没有 0.2.0 版本的包留在 0.3.12。
+- `cordis.patch.yml`：profile 补丁层（provider/model 清单、禁用条目、笔记插件、主题…）。**跨机器最需要逐项核对的就是它**：里面有两处机器相关路径（笔记插件的 `file:///` URI 与 `workspaceDir`），路径不存在时 `!!js` 守卫会让那一条静默跳过，不会让服务崩。
+
+当前**故意禁用**的条目（每条都在文件里写了原因与解除条件）：
+
+| 条目 | 原因 |
+|---|---|
+| `@linxin666/dsh-perf`、`dsh-doctor`、`dsh-desktop-launcher`、`dsh-tool-describe-image` | 到 2026-10-03 仍无 0.2.0 版本（最新版仍 inject 0.2.0 已删除的客户端 `settingsScope` 服务） |
+| `dsh-tui-workspaces`、`-command-trees`、`-settings-sections`、`-scenes`、`-plugin-host`、`-extensions` | `dsh-tui@0.12.0` 这六条在 settings 重载路径上于 activation 期间 emit root events，违反 cordis invariant → **整个设置域被拒**（任何写入都返回 `settings/rejected`，症状是欢迎弹窗永远确认不了） |
+| `dsh-tui`（主条目） | 交互式前门要 TTY、卸载时会拆掉整棵 app 树，属于独立 profile，不属于 Web profile |
+| `web-ui-better-sidebar`、`web-ui-remote-web-ui`、`web-ui-dsh-aionui-panel`、`xmanrui-dsh-im`、`ui-dsh-opencode-usage` | 上游删掉了它们依赖的服务（`settingsNamespace` / `apiProxy` / `client-runtime`），或无兼容版本 |
+
+### 8.3 TUI 的模型选择 = 与 Web 同一份配置（2026-10-03 修复）
+
+TUI 走**它自己的** profile（`dsh-base` + tui bundle）。`llm-pi-ai` 只从**插件 Config** 读路由，没有共享的 providers 文件 —— 所以 TUI 的 `cordis.patch.yml` 原本是空数组 `[]` 时，模型选择器里只有官方接口。
+
+修法：把 Web profile 的 `agent-default-model` + `llm-pi-ai` 两块原样搬进 `local/profile/dsh-tui/cordis.patch.yml`。
+
+**两份必须同步改**：`~\.dsh\profiles\web020\cordis.patch.yml` 与 `~\.dsh\profiles\dsh-tui\cordis.patch.yml`（两个文件里都有注释互相点名）。加/改 provider 或模型时两边都要动。
+
+不需要 TTY 的验证方式：
+
+```powershell
+pnpm dsh --profile dsh-tui --dump-config | Select-String 'opencode-go-chat|paratera|zai-coding-cn'
+```
+
+### 8.4 两个指针与启动器
+
+- `~\.dsh\tree.txt`：一行绝对路径，`~\.dsh\custom.cmd` 与 `~\.dsh\bin\dsh.cmd` 都读它。
+- `<树>\.dsh-profile`：一行 profile 名（0.2.0 树里是 `web020`）。两个启动器会把命令行里的 `web` 换成 `--profile <名字>`。
+- 切版本 = 改 `tree.txt` + 重启服务：`D:\Code\切到0.2.0.cmd` / `D:\Code\回退到0.1.5.cmd`。
+- `deepseek tui` 也跟 `tree.txt` 走（宿主是裸 `dsh`）。**dsh-tui 0.12.0 的 peer 只认 0.2.0-rc 系**，所以回退到 0.1.5 后 TUI 会被兼容性预检跳过；要在 0.1.5 用 TUI 就重装 `@deepseek-harness-tui/dsh-tui@0.11.2`。
