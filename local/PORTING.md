@@ -225,15 +225,17 @@ node local/patch-opencode-session.cjs
 
 ## 八、0.2.0 环境落地（2026-10-03，当前主线）
 
-本机的形态是**一棵 0.2.0 树 + 两个 profile + 两个指针**，0.1.5 树保留为冷备（切换是秒级的）：
+本机现在是**一个目录**（2026-10-03 收拢完成）：`D:\Code\deepseek-harness` 既是 git 仓库本体，也是 0.2.0 的运行树；0.1.5 不再是独立检出，只是仓库里的一个分支。
 
 | 角色 | 本机值 | 仓库里的位置 |
 |---|---|---|
-| 0.2.0 树 | `D:\Code\dsh-020`（git worktree，分支 `my-custom-020`，已推 `mine/my-custom-020`） | 就是这个仓库的 `my-custom-020` 分支 |
-| 0.1.5 树（冷备） | `D:\Code\deepseek-harness`（分支 `my-custom`；**没有** `.dsh-profile`，所以仍走 `web` profile） | 同一仓库的 `my-custom` 分支 |
+| 0.2.0 树（**唯一**） | `D:\Code\deepseek-harness`（自带 `.git`，分支 `my-custom-020`，已推 `mine/my-custom-020`） | 就是这个仓库的 `my-custom-020` 分支 |
+| 0.1.5 | 分支 `my-custom`，**没有独立检出**；回退 = `git checkout my-custom` + `pnpm install` + `pnpm run build`（约 10 分钟，不再是秒级） | 同一仓库的 `my-custom` 分支；远端也有 `mine/my-custom` |
 | 0.2.0 Web profile | `~\.dsh\profiles\web020` | `local/profile/web020/`（3 个文件） |
 | TUI profile | `~\.dsh\profiles\dsh-tui` | `local/profile/dsh-tui/`（2 个文件） |
 | 指针 | `~\.dsh\tree.txt` 选树；`<树>\.dsh-profile` 选该树的 profile | 机器本地，**不进 git**（已在 `.gitignore` 里） |
+
+> 收拢之前是"一个仓库 + 两个检出台"（`dsh-020` 是那个 worktree），切版本靠翻 `tree.txt`。那套形态、以及 `dsh-kit\switch\_retired\` 里的旧切换脚本，都已经是历史。现在只有一个目录，更新一律**原地**做。
 
 ### 8.1 那台的一条命令
 
@@ -288,5 +290,29 @@ pnpm dsh --profile dsh-tui --dump-config | Select-String 'opencode-go-chat|parat
 
 - `~\.dsh\tree.txt`：一行绝对路径，`~\.dsh\custom.cmd` 与 `~\.dsh\bin\dsh.cmd` 都读它。
 - `<树>\.dsh-profile`：一行 profile 名（0.2.0 树里是 `web020`）。两个启动器会把命令行里的 `web` 换成 `--profile <名字>`。
-- 切版本 = 改 `tree.txt` + 重启服务：`D:\Code\dsh-kit\switch\切到0.2.0.cmd` / `D:\Code\dsh-kit\switch\回退到0.1.5.cmd`。
+- 现在只有一个目录，所以"切版本"不再是翻指针：回退到 0.1.5 用 `D:\Code\dsh-kit\switch\切回0.1.5并重建.cmd`（checkout + 重装 + 重建），回来用 `切回0.2.0并重建.cmd`。
 - `deepseek tui` 也跟 `tree.txt` 走（宿主是裸 `dsh`）。**dsh-tui 0.12.0 的 peer 只认 0.2.0-rc 系**，所以回退到 0.1.5 后 TUI 会被兼容性预检跳过；要在 0.1.5 用 TUI 就重装 `@deepseek-harness-tui/dsh-tui@0.11.2`。
+
+### 8.5 树被改名或搬动之后：先查 `node_modules\.modules.yaml`
+
+**这条是 2026-10-03 用一次真实的停机换来的，换机器/改目录名时必看。**
+
+pnpm 把**绝对**的虚拟 store 路径记在 `<树>\node_modules\.modules.yaml` 的 `virtualStoreDir` 里。树一旦改名或搬家，这条记录就对不上，pnpm 的 verify-deps-before-run 会判定 node_modules 需要**从零重装**，于是先跑一次 `pnpm install`——而这次 install 会**交互式提问**：
+
+```
+? The modules directories will be removed and reinstalled from scratch. Proceed? (Y/n)
+```
+
+启动器是隐藏窗口 + 输出重定向，**没人回答这个问题**，于是：
+
+- `deepseek web` 永远起不来（3080 不监听、没有 token URL），`web.pid` 里那个进程还活着；
+- `deepseek tui` 报"未找到 dsh / 建议重装"——因为 `dsh-tui doctor` 用 `spawnSync('dsh', ['--version'])` 探版本，**只有探针超时**，dsh 其实好好的。
+
+修法只有一行（node_modules 本身不用动，里面的链接都是相对的）：
+
+```powershell
+pwsh -File D:\Code\dsh-kit\tools\fix-pnpm-virtual-store.ps1          # 自动从 tree.txt 取树
+pwsh -File D:\Code\dsh-kit\tools\fix-pnpm-virtual-store.ps1 -WhatIf  # 只看不改
+```
+
+`local\setup-020.ps1` 每次运行也会检查这一条并提示，所以另一台机器不会踩同一个坑。**别被那句"建议 npm i -g"骗去重装 dsh。**

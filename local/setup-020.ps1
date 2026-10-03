@@ -144,6 +144,30 @@ foreach ($entry in $launcherContract) {
 }
 
 # ---------------------------------------------------------------------------
+Say "checking the pnpm virtual store record"
+# pnpm records an ABSOLUTE path in <tree>\node_modules\.modules.yaml. A tree renamed
+# or moved after its install keeps the old path there, and pnpm then decides
+# node_modules must be reinstalled from scratch - which ASKS A QUESTION that a hidden
+# launcher window can never answer: the service hangs at startup and dsh-tui reports
+# "dsh is missing" (PORTING.md section 8.5). One line fixes it; node_modules is fine.
+$modules = Join-Path $tree 'node_modules\.modules.yaml'
+if (-not (Test-Path $modules)) {
+  Note "no node_modules\.modules.yaml yet - run pnpm install in the tree first"
+} else {
+  $expected = Join-Path $tree 'node_modules\.pnpm'
+  $line = Get-Content $modules | Where-Object { $_ -match '"?virtualStoreDir"?\s*:' } | Select-Object -First 1
+  $recorded = (($line -replace '^\s*"?virtualStoreDir"?\s*:\s*', '') -replace ',\s*$', '').Trim()
+  if ($recorded.StartsWith('"')) { $recorded = $recorded | ConvertFrom-Json }
+  if ($recorded -eq $expected) {
+    Ok "virtualStoreDir matches this checkout"
+  } else {
+    Note "virtualStoreDir records '$recorded' but this checkout is '$expected'"
+    Note "pnpm would reinstall node_modules from scratch and the launcher would hang; fix with:"
+    Note "  pwsh -File D:\Code\dsh-kit\tools\fix-pnpm-virtual-store.ps1 -Tree `"$tree`""
+  }
+}
+
+# ---------------------------------------------------------------------------
 Say "done - verify next"
 @"
    deepseek stop
