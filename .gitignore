@@ -1,5 +1,8 @@
 CLAUDE.local.md
 .env
+# Machine-local dsh launcher pointer: names the profile this checkout runs
+# (see local/PORTING.md). Never committed - it differs per machine.
+.dsh-profile
 apps/desktop/.env.windows
 apps/desktop/.env.macos
 apps/desktop/*.p12

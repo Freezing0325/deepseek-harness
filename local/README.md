@@ -72,8 +72,10 @@
 
 doctor 会把这些原样列出来提醒你，但不会替你改（跨机器的逐项清单见 `local/PORTING.md` 第三、四节）：
 
-- `~/.dsh/settings.yaml` 的 `desktop-notify` 段（开关 / 提示音 / `flashWindows`）
-- `~/.dsh/settings.yaml` 的 `llm-pi-ai.providers` 自定义 provider（两台的默认模型/provider 清单要对齐）
+- `~/.dsh/settings.yaml` 的 `desktop-notify` 段（开关 / 提示音 / `flashWindows`）—— 只有 **0.1.5 的 `web` profile** 还在读这个文件
+- **（0.2.0）自定义 provider 与模型清单住在 profile 补丁里**，不再住 `settings.yaml`：`~\.dsh\profiles\web020\cordis.patch.yml` 和 `~\.dsh\profiles\dsh-tui\cordis.patch.yml` 的 `llm-pi-ai.providers` + `agent-default-model`。**这两份必须同步改**（`llm-pi-ai` 只从插件 Config 读路由，没有共享的 providers 文件），模板在 `local/profile/`，理由见 `local/PORTING.md` 8.3
+- **（0.2.0）两个指针**：`~\.dsh\tree.txt`（跑哪棵树）与 `<树>\.dsh-profile`（哪棵树的哪个 profile，0.2.0 树里写 `web020`）。换机时 `local/setup-020.ps1` 按仓库模板写它们，别手抄
+- 全局 `@deepseek-harness-tui/dsh-tui` 的版本：**0.12.0 = 0.2.0 线，0.11.2 = 0.1.5 线**，peer 决定二者互斥；换来换去就得重装
 - `~/.dsh/mode.txt`（默认模式 web / cli / tui）
 - `.credentials.yaml` 的 `version` 必须是**数字 `1`**
 - npm 全局是否又被生成了无扩展名 shim `%APPDATA%\npm\dsh`、`%APPDATA%\npm\dsh-tui`（有就删）
