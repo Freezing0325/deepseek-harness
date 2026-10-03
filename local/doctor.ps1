@@ -2,7 +2,7 @@
   dsh 本地补丁自检 — 检查逻辑（入口是同目录 doctor.cmd）
 
   三组检查：
-    1) fork 漂移   —— 本地 my-custom 与 mine/my-custom 是否分叉、有没有未提交改动
+    1) fork 漂移   —— 当前分支与 mine/<同名分支> 是否分叉、有没有未提交改动
     2) A 类源码补丁 —— 每条补丁跑它自带的 spec（补丁被打包了测试，测试就是探针）
     3) B 类仓库外补丁 —— 幂等重放 npm 产物补丁 + 断言启动器没漂移
 
@@ -44,7 +44,7 @@ Write-Host ("仓库: {0}" -f $RepoRoot) -ForegroundColor DarkGray
 # --------------------------------------------------------------------------
 # 1) fork 漂移
 # --------------------------------------------------------------------------
-Write-Section '1/4  fork 漂移（本地分支 vs mine/my-custom）'
+Write-Section '1/4  fork 漂移（当前分支 vs mine/<同名分支>）'
 
 $branch = (& git -C $RepoRoot rev-parse --abbrev-ref HEAD 2>$null)
 if ($LASTEXITCODE -ne 0 -or -not $branch) {
@@ -62,7 +62,7 @@ if (-not $fetchOk) {
   Add-Check 'fork' 'git fetch mine' 'WARN' '拉取失败（Clash 代理没开？）——下面的 ahead/behind 基于上次抓取的结果'
 }
 
-$counts = (& git -C $RepoRoot rev-list --left-right --count "$branch...mine/my-custom" 2>$null)
+$counts = (& git -C $RepoRoot rev-list --left-right --count "$branch...mine/$branch" 2>$null)
 if ($LASTEXITCODE -eq 0 -and $counts) {
   $parts = (($counts | Out-String).Trim()) -split '\s+'
   $ahead = 0; $behind = 0
@@ -82,7 +82,7 @@ if ($LASTEXITCODE -eq 0 -and $counts) {
   }
 }
 else {
-  Add-Check 'fork' '对比 ahead/behind' 'FAIL' "找不到远端分支 mine/my-custom"
+  Add-Check 'fork' '对比 ahead/behind' 'FAIL' "找不到远端分支 mine/$branch"
 }
 
 $dirty = (& git -C $RepoRoot status --porcelain 2>$null)
@@ -287,7 +287,9 @@ Write-Host ("合计: OK {0} / WARN {1} / FAIL {2} / SKIP {3}" -f $okCount, $warn
 
 Write-Section 'C 类：只能人工核对（doctor 不代改）'
 Write-Host '  - ~/.dsh/settings.yaml 的 desktop-notify 段（开关/提示音/flashWindows）' -ForegroundColor DarkGray
-Write-Host '  - ~/.dsh/profiles/web/cordis.patch.yml、~/.dsh/profiles/dsh-tui/cordis.patch.yml 的插件注册' -ForegroundColor DarkGray
+Write-Host '  - ~/.dsh/profiles/web/cordis.patch.yml（0.1.5）与 web020/cordis.patch.yml（0.2.0）的插件注册' -ForegroundColor DarkGray
+Write-Host '  - web020 与 dsh-tui 两份补丁里的 llm-pi-ai.providers + agent-default-model 必须同步改（模板在 local/profile/）' -ForegroundColor DarkGray
+Write-Host '  - 0.2.0 的两个指针：~/.dsh/tree.txt 与 <树>\.dsh-profile（local\setup-020.ps1 按模板写）' -ForegroundColor DarkGray
 Write-Host '  - ~/.dsh/mode.txt（默认模式 web / cli / tui）' -ForegroundColor DarkGray
 Write-Host '  - .credentials.yaml 的 version 必须是数字 1' -ForegroundColor DarkGray
 Write-Host '  - npm 全局若又生成无扩展名 shim（%APPDATA%\npm\dsh、dsh-tui），删掉' -ForegroundColor DarkGray
