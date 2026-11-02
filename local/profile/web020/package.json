@@ -6,7 +6,6 @@
     "@huanlin/dsh-plugin-session-delete": "github:lsz-asd/dsh-plugin-session-delete",
     "@linxin666/dsh-web-ui-all": "^0.3.6",
     "@wingsky-1/dsh-opencode-usage": "^0.1.9",
-    "@xmanrui/dsh-im": "^4.19.2",
     "dshmarket": "^1.40.0"
   },
   "dsh": {
@@ -15,7 +14,6 @@
         "@deepseek-ai/dsh-base",
         "@deepseek-ai/dsh-web-app",
         "dshmarket",
-        "@xmanrui/dsh-im",
         "@linxin666/dsh-web-ui-all",
         "@deepseek-harness-tui/dsh-tui",
         "@huanlin/dsh-plugin-session-delete",

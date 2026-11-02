@@ -20,7 +20,6 @@ minimumReleaseAgeExclude:
   - '@linxin666/dsh-doctor@0.3.12'
   - '@linxin666/dsh-tool-describe-image@0.3.12'
   - '@linxin666/dsh-perf@0.3.12'
-  - '@xmanrui/dsh-im@4.19.2'
 
 # This is the dsh 0.2.0 profile. It exists beside `web` (the 0.1.5 profile) so a
 # version switch never rewrites either profile's plugin set: 0.2.0 boots this
