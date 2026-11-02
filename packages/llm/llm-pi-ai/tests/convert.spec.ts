@@ -932,6 +932,13 @@ describe('mapStopReason / mapUsage', () => {
       stopReason: 'error',
       errorMessage: 'Failed to buffer the request body: length limit exceeded',
     }))).toMatchObject({ kind: 'error', failure: { code: 'INVALID_REQUEST' } })
+    // An OpenCode-routed gateway rejects an over-window streaming request with
+    // 400 and an empty body, leaving only the SDK's `(no body)` text; that is
+    // the context overflow compaction recovers, not a terminal 400.
+    expect(mapStopReason(assistant({
+      stopReason: 'error',
+      errorMessage: '400 status code (no body)',
+    }))).toMatchObject({ kind: 'error', failure: { code: CONTEXT_WINDOW_EXCEEDED_CODE } })
     expect(mapStopReason(assistant({
       stopReason: 'error',
       errorMessage: 'vector length limit exceeded',

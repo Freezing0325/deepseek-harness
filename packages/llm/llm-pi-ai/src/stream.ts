@@ -40,6 +40,15 @@ export function mapUsage(usage: PiUsage): TokenUsage {
 // If pi-ai ever forwards the original Error (or a fetch/dispatcher hook that lets
 // us capture the cause ourselves), classify on `code`/`cause` instead of text.
 function classifyPiAiError(message: string): string {
+  // An OpenCode-routed gateway rejects an over-window request while streaming
+  // with 400 and an empty body, so the SDK can only render
+  // `400 status code (no body)`. There is no provider text left to match, but
+  // on this gateway that shape is an over-window rejection: classifying it as
+  // a context overflow lets compaction reduce the request and retry, where the
+  // generic 400 branch below would end the turn with no recovery.
+  if (/\b400\b/.test(message) && /status code\s*\(\s*no body\s*\)/i.test(message)) {
+    return CONTEXT_WINDOW_EXCEEDED_CODE
+  }
   if (/\b(?:401|403)\b/.test(message)) return 'AUTH'
   if (isQuotaExceededError(message)) return QUOTA_EXCEEDED_CODE
   if (/\b429\b|rate.?limit/i.test(message)) return 'RATE_LIMIT'
