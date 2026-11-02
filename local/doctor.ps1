@@ -113,7 +113,10 @@ $specGroups = @(
   @{ Name = 'A7 session.events getter（TUI 读取）'; Specs = @('packages/core/session/tests/session.spec.ts') },
   # 0.2.0 起 `.dsh-module-fallback` 的删除在 Windows 上会被实时扫描器/残留句柄短暂挡住，
   # 拦不住就让整个 boot 失败是不划算的（见 A8 的用例）。
-  @{ Name = 'A8 启动容忍 Windows 占住的模块回落树'; Specs = @('packages/boot/app-boot/tests/profile.spec.ts') }
+  @{ Name = 'A8 启动容忍 Windows 占住的模块回落树'; Specs = @('packages/boot/app-boot/tests/profile.spec.ts') },
+  # OpenCode 路由的网关对超窗请求回 400 且 body 为空，SDK 只剩
+  # `400 status code (no body)`；不归类成上下文超限，压缩就没有机会减量重试。
+  @{ Name = 'A9 空 body 400 归类为上下文超限'; Specs = @('packages/llm/llm-pi-ai/tests/convert.spec.ts') }
 )
 
 if ($Quick) {
