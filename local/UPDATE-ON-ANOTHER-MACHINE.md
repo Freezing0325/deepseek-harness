@@ -72,9 +72,11 @@ pwsh -File local\setup-020.ps1
 1. 把 `local/profile/{web020,dsh-tui}/*` 写进 `~/.dsh/profiles/`（缺的才写）；
 2. 两个 profile 目录各跑一次 `pnpm install`（**这一步就是在装插件**）；
 3. 写 `~/.dsh/tree.txt` = 本 checkout 路径，并写 `<树>\.dsh-profile` = `web020`；
-4. 装全局 `@deepseek-harness-tui/dsh-tui@0.12.0`（TUI 只认 0.2.0 宿主）。
+4. 装全局 `@deepseek-harness-tui/dsh-tui@0.19.0`（它的 peer 包含 0.2.2-rc.1；0.12.0/0.18.0 只到 0.2.1-rc.5）。
 
 **验收**：输出里应有 `tree.txt = <你的树路径>`、`.dsh-profile = web020`、`virtualStoreDir matches this checkout`，以及三条 launcher contract 的 `ok`。
+
+**从旧 0.2.x 迁移**：只更新了 checkout 的机器还要跑一次 `pwsh -File local\fix-022.ps1`。它改两个 profile 的 `dsh-tui`/override、给 web020 补 `@deepseek-ai/dsh-settings`，再重装并升级全局 TUI；幂等，且会先停占用 3080 的旧服务。
 
 **失败怎么办**：哪一条不是 `ok` 就照它打印的提示做；`pnpm install` 失败先看网络。
 
@@ -115,9 +117,9 @@ Select-String -Path "$env:USERPROFILE\.dsh\web.err.log" `
 3. **`git push` 被 pre-push 钩子挡住**（报 `Cannot find module 'D:\d\Code\...\node_modules\pnpm\bin\pnpm.mjs'`，路径里多一层 `\d\`）。
    根因：dsh 服务若从 **Git Bash 会话**启动，会继承 `MSYSTEM=MINGW64` / `PWD=/d/...`；git 钩子由 MSYS `sh` 跑 lefthook，把项目根算错。
    修法：从**普通 cmd / PowerShell 窗口** push；或 `git push --no-verify` 之后手动跑一次 `npm run typecheck` 补等价检查。
-4. **TUI 的版本必须与线匹配**：`dsh-tui@0.12.0` 只认 0.2.0 宿主；回退到 0.1.5 线要 `@deepseek-harness-tui/dsh-tui@0.11.2`。两者互斥，换线就得重装全局那份。
+4. **TUI 的版本必须与线匹配**：`dsh-tui@0.19.0` 的 peer 包含 0.2.2-rc.1；`0.12.0` / `0.18.0` 只到 `0.2.1-rc.5`，在 0.2.2 上会被兼容性预检跳过。回退到 0.1.5 线要 `@deepseek-harness-tui/dsh-tui@0.11.2`。换线就得重装全局那份。
 5. **两份 profile 补丁的 LLM 块必须同步改**：`~/.dsh/profiles/web020/cordis.patch.yml` 与 `~/.dsh/profiles/dsh-tui/cordis.patch.yml`（加/改 provider 或模型时两边都要动，两个文件里都有注释互相点名）。验证：`pnpm dsh --profile dsh-tui --dump-config`。
-6. **`dsh-tui@0.12.0` 的六条 web-plane 条目在 0.2.0 下必须保持禁用**（`-workspaces` / `-command-trees` / `-settings-sections` / `-scenes` / `-plugin-host` / `-extensions`）：它们在 settings 重载路径上于 activation 期间 emit root events，会让**所有** settings 写入被拒（症状：欢迎弹窗永远确认不了）。这条已经写在 `local/profile/web020/cordis.patch.yml` 里，别手动解禁。
+6. **旧 `dsh-tui` 的六条 web-plane 条目继续禁用**（`-workspaces` / `-command-trees` / `-settings-sections` / `-scenes` / `-plugin-host` / `-extensions`）：它们在 settings 重载路径上于 activation 期间 emit root events，会让**所有** settings 写入被拒（症状：欢迎弹窗永远确认不了）。0.19.0 下尚未验证已修好，解除前先在设置面板写一次验证；这条已经写在 `local/profile/web020/cordis.patch.yml` 里。
 
 ## 7. 以后在这台机器上怎么更新（固定动作）
 
@@ -127,6 +129,7 @@ git fetch origin
 git rebase origin/master          # 或切到官方 tag
 pnpm install
 pnpm run build
+pwsh -NoProfile -File local\fix-022.ps1   # 0.2.2 线第一次升级时跑；幂等
 deepseek stop ; deepseek web
 # 然后跑第 5 节那三条判据
 ```

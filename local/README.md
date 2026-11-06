@@ -69,7 +69,8 @@ doctor 会把这些原样列出来提醒你，但不会替你改（跨机器的�
 - `~/.dsh/settings.yaml` 的 `desktop-notify` 段（开关 / 提示音 / `flashWindows`）—— 只有 **0.1.5 的 `web` profile** 还在读这个文件
 - **（0.2.0）自定义 provider 与模型清单住在 profile 补丁里**，不再住 `settings.yaml`：`~\.dsh\profiles\web020\cordis.patch.yml` 和 `~\.dsh\profiles\dsh-tui\cordis.patch.yml` 的 `llm-pi-ai.providers` + `agent-default-model`。**这两份必须同步改**（`llm-pi-ai` 只从插件 Config 读路由，没有共享的 providers 文件），模板在 `local/profile/`，理由见 `local/PORTING.md` 8.3
 - **（0.2.0）两个指针**：`~\.dsh\tree.txt`（跑哪棵树）与 `<树>\.dsh-profile`（哪棵树的哪个 profile，0.2.0 树里写 `web020`）。换机时 `local/setup-020.ps1` 按仓库模板写它们，别手抄
-- 全局 `@deepseek-harness-tui/dsh-tui` 的版本：**0.12.0 = 0.2.0 线，0.11.2 = 0.1.5 线**，peer 决定二者互斥；换来换去就得重装
+- 全局 `@deepseek-harness-tui/dsh-tui` 的版本：**0.19.0 = 0.2.2-rc.1 线，0.12.0 = 0.2.0 / 0.2.1 线，0.11.2 = 0.1.5 线**，peer 决定它们互斥；换线就得重装
+- **更新到 0.2.2-rc.1 后先跑 `local\fix-022.ps1`**：它把两个 profile 的 `dsh-tui` 换到 0.19.0、把六个 `@linxin666/*` override 从 0.4.4 换到 0.4.15，并给 web020 补上 `@deepseek-ai/dsh-settings@0.2.2-rc.1`（缺了 `web-ui-settings` 会激活失败）。脚本幂等，会先停占用 3080 的旧服务
 - `~/.dsh/mode.txt`（默认模式 web / cli / tui）
 - `.credentials.yaml` 的 `version` 必须是**数字 `1`**
 - npm 全局是否又被生成了无扩展名 shim `%APPDATA%\npm\dsh`、`%APPDATA%\npm\dsh-tui`（有就删）

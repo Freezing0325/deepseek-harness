@@ -16,7 +16,7 @@
 #   2. writes ~/.dsh/profiles/dsh-tui     from local/profile/dsh-tui     (the TUI profile's LLM routes)
 #   3. pnpm install in both profile directories
 #   4. points the launcher at this checkout: ~/.dsh/tree.txt + <tree>\.dsh-profile
-#   5. installs the global TUI (@deepseek-harness-tui/dsh-tui@0.12.0) when it is missing
+#   5. installs the global TUI (@deepseek-harness-tui/dsh-tui@0.19.0) when it is missing
 #   6. prints the checks to run afterwards
 #
 # What it does NOT do (the git / OS level steps, documented in local/PORTING.md):
@@ -33,7 +33,7 @@ $ErrorActionPreference = 'Stop'
 $dshHome = if ($env:DSH_HOME) { $env:DSH_HOME } else { Join-Path $env:USERPROFILE '.dsh' }
 $profiles = Join-Path $dshHome 'profiles'
 $templateRoot = Join-Path $PSScriptRoot 'profile'
-$tuiVersion = '0.12.0'
+$tuiVersion = '0.19.0'
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 
 function Say ($text) { Write-Host "`n== $text" -ForegroundColor Cyan }
@@ -116,7 +116,7 @@ if ($installed -eq $tuiVersion) {
   & npm i -g --legacy-peer-deps "@deepseek-harness-tui/dsh-tui@$tuiVersion"
   if ($LASTEXITCODE -ne 0) { Note "npm install failed - run it by hand: npm i -g --legacy-peer-deps @deepseek-harness-tui/dsh-tui@$tuiVersion" }
 }
-Note "dsh-tui 0.12.0 peers require dsh 0.2.0-rc, so the TUI only runs while the tree above is the 0.2.0 one"
+Note "dsh-tui 0.19.0 peers include dsh 0.2.2-rc.1, so it matches this tree"
 
 # ---------------------------------------------------------------------------
 Say "checking the launcher contract"

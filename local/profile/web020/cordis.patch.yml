@@ -39,7 +39,7 @@
       config:
         workspaceDir: 'D:\尹思昱\学习\学习\硕博连读'
         noteFile: 英语写作冲刺笔记.html
-# dsh-tui 0.12.0 is the 0.2.0 line (its peers list `0.2.0-rc.1 || 0.2.0-rc.2`),
+# dsh-tui 0.19.0 is the 0.2.2 line (its peers include `0.2.2-rc.1`),
 # so the bundle loads here instead of being skipped. Its six web-plane rows
 # (workspaces / command-trees / settings-sections / scenes / plugin-host /
 # extensions) are enabled by default and need no override, and its host-plane
@@ -48,7 +48,7 @@
 # interactive front door DOES need one: it binds a TTY, seeds the first
 # workspace, and disposes the whole app tree when it unmounts, which belongs to
 # the standalone `deepseek tui` profile, not to the web one. `working-activity`
-# was an 0.1.5-era entry that no longer exists in 0.2.0, so it stays out.
+# was an 0.1.5-era entry that no longer exists in 0.2.x, so it stays out.
 - id: dsh-tui
   disabled: true
 # dsh-better-sidebar 仍 import 已被新版 dsh-settings 移除的 settingsNamespace

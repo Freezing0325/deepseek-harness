@@ -44,7 +44,7 @@ Write-Host ("仓库: {0}" -f $RepoRoot) -ForegroundColor DarkGray
 # --------------------------------------------------------------------------
 # 1) fork 漂移
 # --------------------------------------------------------------------------
-Write-Section '1/4  fork 漂移（当前分支 vs mine/<同名分支>）'
+Write-Section '1/5  fork 漂移（当前分支 vs mine/<同名分支>）'
 
 $branch = (& git -C $RepoRoot rev-parse --abbrev-ref HEAD 2>$null)
 if ($LASTEXITCODE -ne 0 -or -not $branch) {
@@ -97,7 +97,7 @@ else {
 # --------------------------------------------------------------------------
 # 2) A 类源码补丁 —— 跑补丁自带的 spec
 # --------------------------------------------------------------------------
-Write-Section '2/4  A 类源码补丁（跑 spec 探针）'
+Write-Section '2/5  A 类源码补丁（跑 spec 探针）'
 
 $specGroups = @(
   @{ Name = 'A1 OpenCode session 头'; Specs = @('packages/llm/llm-pi-ai/tests/session-header.spec.ts') },
@@ -186,7 +186,7 @@ else {
 # --------------------------------------------------------------------------
 # 3) B 类仓库外补丁
 # --------------------------------------------------------------------------
-Write-Section '3/4  B 类仓库外补丁'
+Write-Section '3/5  B 类仓库外补丁'
 
 # B1：npm 版 dsh 的 x-opencode-session 头（deepseek tui 链路）
 $patchScript = Join-Path $PSScriptRoot 'patch-opencode-session.cjs'
@@ -236,7 +236,7 @@ else {
 #    （换机后最容易踩的坑：整份 checkout 可移植，但 profile 的
 #     cordis.patch.yml 里可能有指向工作区的 file:// 绝对路径）
 # --------------------------------------------------------------------------
-Write-Section '4/4  跨机器核对（profile 补丁层的外部引用）'
+Write-Section '4/5  跨机器核对（profile 补丁层的外部引用）'
 
 $profileRoot = Join-Path $env:USERPROFILE '.dsh\profiles'
 $patchFiles = @()
@@ -265,6 +265,96 @@ elseif ($brokenRefs.Count -eq 0) {
 }
 else {
   Add-Check '跨机' 'profile 外部插件路径不存在' 'WARN' (($brokenRefs -join '; ') + ' —— 按 local/PORTING.md 第四节改成这台机器的实际路径')
+}
+
+# --------------------------------------------------------------------------
+# 5) 运行时版本：profile 依赖必须与 local/profile 模板一致
+#    （dsh-tui 0.12.0/0.18.0 的 peer 只到 0.2.1-rc.5，0.2.2-rc.1 会直接跳过；
+#      web020 少了 @deepseek-ai/dsh-settings 则 web-ui-settings 激活失败）
+# --------------------------------------------------------------------------
+Write-Section '5/5  0.2.2 运行时版本（profile 依赖与解析结果）'
+
+function Get-ManifestVersion([string]$Path) {
+  if (-not (Test-Path -LiteralPath $Path)) { return $null }
+  try { return (Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json).version } catch { return $null }
+}
+
+function Get-DepRange([string]$Path, [string]$Name) {
+  if (-not (Test-Path -LiteralPath $Path)) { return $null }
+  try {
+    $manifest = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+    $prop = $manifest.dependencies.PSObject.Properties[$Name]
+    if ($prop) { return [string]$prop.Value }
+  } catch { }
+  return $null
+}
+
+function Get-BareVersion([string]$Range) {
+  if (-not $Range) { return $null }
+  return ($Range -replace '^[\^~>=< ]+', '').Trim()
+}
+
+$webTemplate = Join-Path $RepoRoot 'local\profile\web020\package.json'
+$tuiTemplate = Join-Path $RepoRoot 'local\profile\dsh-tui\package.json'
+$expectedTui = Get-BareVersion (Get-DepRange $tuiTemplate '@deepseek-harness-tui/dsh-tui')
+$expectedSettings = Get-BareVersion (Get-DepRange $webTemplate '@deepseek-ai/dsh-settings')
+
+$wsTemplate = Join-Path $RepoRoot 'local\profile\web020\pnpm-workspace.yaml'
+$expectedWebUi = $null
+if (Test-Path -LiteralPath $wsTemplate) {
+  $m = [regex]::Match((Get-Content -LiteralPath $wsTemplate -Raw), '@linxin666/dsh-client-ui-web-ui-settings@([0-9][0-9.]*)')
+  if ($m.Success) { $expectedWebUi = $m.Groups[1].Value }
+}
+
+if (-not $expectedTui -or -not $expectedSettings -or -not $expectedWebUi) {
+  Add-Check '版本' '读取 local/profile 模板' 'FAIL' '模板里找不到 dsh-tui / dsh-settings / web-ui-settings 的版本，检查 local/profile/'
+}
+else {
+  $globalManifest = Join-Path $env:APPDATA 'npm\node_modules\@deepseek-harness-tui\dsh-tui\package.json'
+  $globalTui = Get-ManifestVersion $globalManifest
+  if ($globalTui -eq $expectedTui) {
+    Add-Check '版本' '全局 dsh-tui' 'OK' "$globalTui（模板 $expectedTui）"
+  }
+  else {
+    $shown = if ($globalTui) { $globalTui } else { '未安装' }
+    Add-Check '版本' '全局 dsh-tui 不匹配' 'FAIL' ("$shown，模板要求 $expectedTui —— npm i -g --legacy-peer-deps @deepseek-harness-tui/dsh-tui@$expectedTui")
+  }
+
+  $webProfileDir = Join-Path $env:USERPROFILE '.dsh\profiles\web020'
+  $tuiProfileDir = Join-Path $env:USERPROFILE '.dsh\profiles\dsh-tui'
+  foreach ($pair in @(
+      @{ Name = 'web020'; Dir = $webProfileDir },
+      @{ Name = 'dsh-tui'; Dir = $tuiProfileDir })) {
+    $manifest = Join-Path $pair.Dir 'node_modules\@deepseek-harness-tui\dsh-tui\package.json'
+    $v = Get-ManifestVersion $manifest
+    if ($v -eq $expectedTui) {
+      Add-Check '版本' "$($pair.Name) 的 dsh-tui" 'OK' "$v"
+    }
+    else {
+      $shown = if ($v) { $v } else { '未安装' }
+      Add-Check '版本' "$($pair.Name) 的 dsh-tui 不匹配" 'FAIL' ("$shown，模板要求 $expectedTui —— 在 $($pair.Dir) 里跑 pnpm install")
+    }
+  }
+
+  $settingsManifest = Join-Path $webProfileDir 'node_modules\@deepseek-ai\dsh-settings\package.json'
+  $settings = Get-ManifestVersion $settingsManifest
+  if ($settings -eq $expectedSettings) {
+    Add-Check '版本' 'web020 解析 dsh-settings' 'OK' "$settings"
+  }
+  else {
+    $shown = if ($settings) { $settings } else { '未安装' }
+    Add-Check '版本' 'web020 无法解析 dsh-settings' 'FAIL' ("$shown，需要 $expectedSettings —— package.json 要显式依赖它（local\fix-022.ps1 会补）")
+  }
+
+  $clientManifest = Join-Path $webProfileDir 'node_modules\@linxin666\dsh-client-ui-web-ui-settings\package.json'
+  $client = Get-ManifestVersion $clientManifest
+  if ($client -eq $expectedWebUi) {
+    Add-Check '版本' 'web020 的 web-ui-settings' 'OK' "$client"
+  }
+  else {
+    $shown = if ($client) { $client } else { '未安装' }
+    Add-Check '版本' 'web020 的 web-ui-settings 不匹配' 'FAIL' ("$shown，模板要求 $expectedWebUi —— 检查 pnpm-workspace.yaml 的 overrides")
+  }
 }
 
 # --------------------------------------------------------------------------

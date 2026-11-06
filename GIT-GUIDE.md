@@ -136,10 +136,15 @@ git 管不到的部分（启动器、`~/.dsh` 配置、profile 里指向工作�
 
 ## 八、当前进度（本次更新结果）
 
-- 官方版本：**0.2.1-rc.5**（`my-custom-020` 已 rebase 到该 tag；0.2.0-rc.2 → 0.2.1-rc.5 跨 4452 个上游提交，会话层、客户端、构建链都有改动）
-- 本地补丁：**A1–A9 + B1–B2**，39 个提交全部重放成功；共 4 处冲突，均已手工合并
+- 官方版本：**0.2.2-rc.1**（`my-custom-020` 已对齐到该 tag）
+- 0.2.2 迁移：**先跑 `local\fix-022.ps1`**（幂等，会自动停掉占用 3080 的旧服务、备份并更新两个 profile、装全局 TUI）
+  - `dsh-tui` 0.12.0 / 0.18.0 的 peer 只到 `0.2.1-rc.5`，会被 `0.2.2-rc.1` 跳过 → 换 `0.19.0`
+  - 六个 `@linxin666/*` 从 `0.4.4` 升到 `0.4.15`；web020 还要显式依赖 `@deepseek-ai/dsh-settings@0.2.2-rc.1`（0.4.15 的 `web-ui-settings` 仍不声明它，缺了会激活失败）
+  - `@huanlin/dsh-plugin-session-delete@0.3.1` 仍不兼容、会被跳过；警告不致命，**不要**用 allow-version 强拉
+- 验证结果（隔离 `DSH_HOME`）：`web020` 能打印带 token 的 URL；`dsh-tui` 正常渲染，底部显示 `dsh-tui v0.19.0` / `dsh-core v0.2.2-rc.1`；`local\fix-022.ps1` 可重复执行
+- 上一轮 0.2.1-rc.5 rebase 记录：本地补丁 **A1–A9 + B1–B2**，39 个提交全部重放成功；共 4 处冲突，均已手工合并
   （`api-remotes/package.json` 的依赖块取并集；两处翻译配对哈希交由生成器重记；上游已删除的 sandbox note 侧车文件接受删除）
 - 新增补丁 A9：OpenCode 网关对超窗请求回 400 且 body 为空，归类为上下文超限，让压缩能减量重试
-- 验证结果：`pnpm run build` 宿主侧与 Web 前端均通过；`local\doctor.cmd` 的 A1–A9 全绿（A4 187 例、A7 80 例、A8 36 例、A9 83 例）；`dsh-preflight.mjs` 与更新前基线逐项一致（仅 3080 端口无服务、3 个幽灵工作区）
+- 0.2.1 时验证：`pnpm run build` 宿主侧与 Web 前端均通过；`local\doctor.cmd` 的 A1–A9 全绿（A4 187 例、A7 80 例、A8 36 例、A9 83 例）；`dsh-preflight.mjs` 与更新前基线逐项一致（仅 3080 端口无服务、3 个幽灵工作区）
 - 构建链注意：本次起要求 `pnpm@11.28.5`，且 Windows 上 `vite build` 需绕开被占用的系统 Temp（见 `CLAUDE.local.md` 陷阱）
 - 换机：另一台电脑怎么同步见本文第七节；git 管不到的配置与插件路径见 `local/PORTING.md`

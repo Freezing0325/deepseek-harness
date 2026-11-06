@@ -250,7 +250,9 @@ pnpm install ; pnpm run build                    # 必须产出 apps/web/dist/in
 pwsh -File local\setup-020.ps1                   # 写 profile、装插件、指指针、装全局 TUI
 ```
 
-`local\setup-020.ps1` 幂等且不删东西：已存在且内容不同的文件只提示不覆盖（要覆盖加 `-Force`，旧文件留 `.bak-<时间戳>`）。它做四件事：写两个 profile（缺的才写）→ 各自 `pnpm install` → 写两个指针 → 装全局 `@deepseek-harness-tui/dsh-tui@0.12.0`。
+`local\setup-020.ps1` 幂等且不删东西：已存在且内容不同的文件只提示不覆盖（要覆盖加 `-Force`，旧文件留 `.bak-<时间戳>`）。它做四件事：写两个 profile（缺的才写）→ 各自 `pnpm install` → 写两个指针 → 装全局 `@deepseek-harness-tui/dsh-tui@0.19.0`。
+
+已经在旧 0.2.x 上、只更新了 checkout 的机器：**再跑一次 `local\fix-022.ps1`**。它只改 `~/.dsh/profiles` 里的依赖与 override（改前留 `.bak-fix022-<时间戳>`），然后重装并装全局 TUI；会自动停掉占用 3080 的旧 Web 服务。
 
 它**不做**（属于 git/系统层，见本文件 §2、§3、§六）：凭据 `~\.dsh\.credentials.yaml`、启动器文件 `~\.dsh\bin\*.cmd` 与 `~\.dsh\custom.cmd`、以及 `pnpm run build`。
 
@@ -265,7 +267,7 @@ deepseek tui                            # 模型选择器里应出现第八节 8
 ### 8.2 `web020` profile 里有什么、为什么
 
 - `package.json`：bundles（`dsh-base`、`dsh-web-app`、`dshmarket`、`@linxin666/dsh-web-ui-all`、`@deepseek-harness-tui/dsh-tui` …）与依赖。
-- `pnpm-workspace.yaml`：`overrides` 把六个 `@linxin666/*` 子包钉在**作者为 0.2.0 发布的 0.4.4 线**；四个没有 0.2.0 版本的包留在 0.3.12。
+- `pnpm-workspace.yaml`：`overrides` 把六个 `@linxin666/*` 子包钉在**作者为 0.2.2 发布的 0.4.15 线**；四个没有 0.2.2 版本的包留在 0.3.12。web020 的 `package.json` 还要显式依赖 `@deepseek-ai/dsh-settings@0.2.2-rc.1`，因为 `web-ui-settings@0.4.15` 仍 import 它却不声明。
 - `cordis.patch.yml`：profile 补丁层（provider/model 清单、禁用条目、笔记插件、主题…）。**跨机器最需要逐项核对的就是它**：里面有两处机器相关路径（笔记插件的 `file:///` URI 与 `workspaceDir`），路径不存在时 `!!js` 守卫会让那一条静默跳过，不会让服务崩。
 
 当前**故意禁用**的条目（每条都在文件里写了原因与解除条件）：
@@ -273,7 +275,7 @@ deepseek tui                            # 模型选择器里应出现第八节 8
 | 条目 | 原因 |
 |---|---|
 | `@linxin666/dsh-perf`、`dsh-doctor`、`dsh-desktop-launcher`、`dsh-tool-describe-image` | 到 2026-10-03 仍无 0.2.0 版本（最新版仍 inject 0.2.0 已删除的客户端 `settingsScope` 服务） |
-| `dsh-tui-workspaces`、`-command-trees`、`-settings-sections`、`-scenes`、`-plugin-host`、`-extensions` | `dsh-tui@0.12.0` 这六条在 settings 重载路径上于 activation 期间 emit root events，违反 cordis invariant → **整个设置域被拒**（任何写入都返回 `settings/rejected`，症状是欢迎弹窗永远确认不了） |
+| `dsh-tui-workspaces`、`-command-trees`、`-settings-sections`、`-scenes`、`-plugin-host`、`-extensions` | 旧 `dsh-tui@0.12.0` 这六条在 settings 重载路径上于 activation 期间 emit root events，违反 cordis invariant → **整个设置域被拒**（任何写入都返回 `settings/rejected`，症状是欢迎弹窗永远确认不了）。0.19.0 下先保持禁用，解除前先在设置面板写一次验证 |
 | `dsh-tui`（主条目） | 交互式前门要 TTY、卸载时会拆掉整棵 app 树，属于独立 profile，不属于 Web profile |
 | `web-ui-better-sidebar`、`web-ui-remote-web-ui`、`web-ui-dsh-aionui-panel`、`xmanrui-dsh-im`、`ui-dsh-opencode-usage` | 上游删掉了它们依赖的服务（`settingsNamespace` / `apiProxy` / `client-runtime`），或无兼容版本 |
 
@@ -296,7 +298,7 @@ pnpm dsh --profile dsh-tui --dump-config | Select-String 'opencode-go-chat|parat
 - `~\.dsh\tree.txt`：一行绝对路径，`~\.dsh\custom.cmd` 与 `~\.dsh\bin\dsh.cmd` 都读它。
 - `<树>\.dsh-profile`：一行 profile 名（0.2.0 树里是 `web020`）。两个启动器会把命令行里的 `web` 换成 `--profile <名字>`。
 - 现在只有一个目录，所以"切版本"不再是翻指针：回退到 0.1.5 用 `D:\Code\dsh-kit\switch\切回0.1.5并重建.cmd`（checkout + 重装 + 重建），回来用 `切回0.2.0并重建.cmd`。
-- `deepseek tui` 也跟 `tree.txt` 走（宿主是裸 `dsh`）。**dsh-tui 0.12.0 的 peer 只认 0.2.0-rc 系**，所以回退到 0.1.5 后 TUI 会被兼容性预检跳过；要在 0.1.5 用 TUI 就重装 `@deepseek-harness-tui/dsh-tui@0.11.2`。
+- `deepseek tui` 也跟 `tree.txt` 走（宿主是裸 `dsh`）。**dsh-tui 0.19.0 的 peer 才包含 `0.2.2-rc.1`**；0.12.0 只到 `0.2.1-rc.5`，在 0.2.2 上会被兼容性预检直接跳过。回退到 0.1.5 则重装 `@deepseek-harness-tui/dsh-tui@0.11.2`。
 
 ### 8.5 树被改名或搬动之后：先查 `node_modules\.modules.yaml`
 
