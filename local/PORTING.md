@@ -8,9 +8,9 @@
 > 用途：本机（"这台"）和另一台电脑（"那台"）共用同一个 fork，但**只有仓库里的东西能靠 git 同步**。
 > 本文件记录 git 管不到、必须人工核对的部分，以及每次官方更新后那台要做的事。
 >
-> 最后更新：2026-10-03 | 本机：**单目录** `D:\Code\deepseek-harness`（git 仓库本体 + 0.2.0 运行树，分支 `my-custom-020`）| 官方基线：**0.2.0-rc.2**
+> 最后更新：2026-11-06 | 本机：**单目录** `E:\Code\deepseek-harness`（git 仓库本体 + 0.2.2 运行树，分支 `my-custom-020`）| 官方基线：**0.2.2-rc.1**
 >
-> **0.2.0 环境怎么在那台落地 → 第八节（含 `local\setup-020.ps1` 一条命令）；一步一步的更新流程 → `local/UPDATE-ON-ANOTHER-MACHINE.md`。**
+> **0.2.2 环境怎么在那台落地 → 第八节（含 `local\setup-020.ps1` 一条命令）；一步一步的更新流程 → `local/UPDATE-ON-ANOTHER-MACHINE.md`。**
 
 ---
 
@@ -28,7 +28,23 @@ git remote -v
 
 名字不一样就先 `git remote rename` 对齐（早期文档里 fork 叫过 `origin`）。名字对不上时，本文件下面所有 `mine/...` 都要按实际名字替换。
 
-### 1.2 2026-09-10 这次升级**重写了 `my-custom` 的历史**
+### 1.2 2026-11-06 这次升级**重写了 `my-custom-020` 的历史**
+
+官方从 `0.2.0-rc.2` 跳到 `0.2.2-rc.1`（约 3400 条提交），39 条本地补丁全部 rebase 重放，**sha 全变了**；A4 的两条提交（沙箱泛化与其撤销）按设计一起退役，官方同口径的 spec 仍在跑。那台如果还停在 `0.2.1-rc.5` 的旧 sha 上，普通 `git pull` 会失败或产生分叉 —— 显式重置：
+
+```bash
+git status                                  # 先确认没有未提交改动（有就先提交或 stash）
+git branch backup/pre-0.2.2-<日期>           # 备份本地，别省这一步
+git checkout my-custom-020
+git fetch mine
+git reset --hard mine/my-custom-020
+```
+
+⚠️ 如果那台本地有**这台没有的提交**，先别 reset：记下那几条提交，重置后 `git cherry-pick`，或者先告诉这台，由这台合并后再统一推送。
+
+重置后还要跑一次 `local\fix-022.ps1`：官方 0.2.2 的 peer 范围拒掉 `dsh-tui` 0.12/0.18，profile 与全局 TUI 都得升到 **0.19.0**，`web020` 还要显式声明 `@deepseek-ai/dsh-settings`（`web-ui-settings` 自己 import 却不声明）。`local\doctor.cmd` 第 5 节会把这三处版本与模板逐个比对。
+
+### 1.2.1 更早的一次重写（2026-09-10，0.1.5）
 
 官方从 `0.1.2-alpha.5` 跳到 `0.1.5-rc.1`（1459 条提交），15 条本地补丁全部 rebase 重放，**sha 全变了**。那台如果还停在旧 sha 上，普通 `git pull` 会失败或产生分叉 —— 显式重置：
 

@@ -10,9 +10,9 @@
 ## 0. 先弄清这份仓库是什么、目标形态是什么
 
 - 仓库 = 用户的 dsh fork：`https://github.com/Freezing0325/deepseek-harness.git`（远端名约定：**`mine` = fork**、**`origin` = 官方 `deepseek-ai/deepseek-harness`**）。
-- **要用的分支是 `my-custom-020`**（0.2.0 线）。`my-custom` 是 0.1.5 旧线，只作回退，不要拿它当更新目标。
+- **要用的分支是 `my-custom-020`**（0.2.2 线）。`my-custom` 是 0.1.5 旧线，只作回退，不要拿它当更新目标。
 - ⚠️ **fork 的默认分支目前是 `master`**（旧的官方镜像）。所以 `git clone` 之后**必须显式切到 `my-custom-020`**，否则你会在一条废弃的线上干活。用户也可以在 GitHub 仓库设置里把默认分支改成 `my-custom-020`（一次性，之后 clone 就自动落在正确分支上）。
-- **目标形态：一个目录** —— 该目录既是 git 仓库本体（自带 `.git` 与全部历史），也是正在运行的 0.2.0 树。profile 定义（插件清单 / provider 清单 / 禁用条目）都在仓库的 `local/profile/` 里，由 `local/setup-020.ps1` 写进 `~/.dsh/profiles/`。
+- **目标形态：一个目录** —— 该目录既是 git 仓库本体（自带 `.git` 与全部历史），也是正在运行的 0.2.2 树。profile 定义（插件清单 / provider 清单 / 禁用条目）都在仓库的 `local/profile/` 里，由 `local/setup-020.ps1` 写进 `~/.dsh/profiles/`。
 - **这个仓库不含**（属于每台机器自己的东西，别去仓库里找）：
   - API 凭据 `~/.dsh/.credentials.yaml`
   - 启动器：`~/.dsh/bin/deepseek.cmd`（+ 同目录 `deepseek.exe`）、`~/.dsh/custom.cmd`、`~/.dsh/bin/dsh.cmd`
@@ -33,10 +33,12 @@
 ## 2. 拿到代码
 
 ```powershell
-# 已经有这个仓库：
+# 已经有这个仓库（0.2.2 这次重写了历史，必须 reset 而不是 pull）：
+git -C <你的仓库目录> status                       # 先确认没有未提交改动（有就先提交或 stash）
 git -C <你的仓库目录> fetch mine
+git -C <你的仓库目录> branch backup/pre-0.2.2-<日期>   # 备份本地，别省这一步
 git -C <你的仓库目录> checkout my-custom-020
-git -C <你的仓库目录> pull --ff-only mine my-custom-020
+git -C <你的仓库目录> reset --hard mine/my-custom-020
 
 # 全新克隆：
 git clone -b my-custom-020 https://github.com/Freezing0325/deepseek-harness.git D:\Code\deepseek-harness
@@ -45,9 +47,9 @@ git remote add origin https://github.com/deepseek-ai/deepseek-harness.git   # �
 git remote add mine  https://github.com/Freezing0325/deepseek-harness.git   # fork；已有则跳过
 ```
 
-**验收**：`git rev-parse --abbrev-ref HEAD` 输出 `my-custom-020`；`git log --oneline -3` 能看到 `docs(local):` / `fix(local):` 开头的本地提交。
+**验收**：`git rev-parse --abbrev-ref HEAD` 输出 `my-custom-020`；`git log --oneline -3` 能看到 `docs(local):` / `fix(local):` 开头的本地提交；`git rev-list --left-right --count mine/my-custom-020...HEAD` 输出 `0 0`。
 
-**失败怎么办**：若 `pull` 报分叉（本地有本地提交），先 `git status` 看清是什么，**不要** `git reset --hard`；把情况报给用户。
+**失败怎么办**：若 `reset --hard` 之前发现本地有**这台没有的提交**（`git log --oneline mine/my-custom-020..HEAD` 非空），**先别 reset**：把这几条提交记下来报给用户，由用户决定 cherry-pick 还是放弃。除此之外不要用 `git pull`——历史已重写，`pull` 只会制造分叉。
 
 ## 3. 装依赖 + 构建
 
