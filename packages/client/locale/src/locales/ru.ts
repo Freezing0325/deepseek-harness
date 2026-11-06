@@ -38,6 +38,7 @@ export const ru = {
   'back': 'Назад',
   'brand.localBuild': 'Локальная сборка DSH',
   'workspace.defaultName': 'Рабочая область по умолчанию',
+  'documentTitle.pending': '⚠️ Ожидающее действие',
   'unknown': 'Неизвестно',
   'none': 'Нет',
   'truncated': 'Усечено',

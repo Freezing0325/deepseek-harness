@@ -38,6 +38,7 @@ export const pt = {
   'back': 'Voltar',
   'brand.localBuild': 'Versão local do DSH',
   'workspace.defaultName': 'Espaço de trabalho padrão',
+  'documentTitle.pending': '⚠️ Ação pendente',
   'unknown': 'Desconhecido',
   'none': 'Nenhum',
   'truncated': 'Truncado',

@@ -38,6 +38,7 @@ export const de = {
   'back': 'Zurück',
   'brand.localBuild': 'Lokaler DSH-Build',
   'workspace.defaultName': 'Standardarbeitsbereich',
+  'documentTitle.pending': '⚠️ Ausstehende Aktion',
   'unknown': 'Unbekannt',
   'none': 'Keine',
   'truncated': 'Abgeschnitten',

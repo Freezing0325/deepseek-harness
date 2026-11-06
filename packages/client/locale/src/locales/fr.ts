@@ -38,6 +38,7 @@ export const fr = {
   'back': 'Retour',
   'brand.localBuild': 'Version locale de DSH',
   'workspace.defaultName': 'Espace de travail par défaut',
+  'documentTitle.pending': '⚠️ Action en attente',
   'unknown': 'Inconnu',
   'none': 'Aucun',
   'truncated': 'Tronqué',
