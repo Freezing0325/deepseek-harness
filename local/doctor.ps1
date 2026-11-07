@@ -103,6 +103,11 @@ $specGroups = @(
   # A1（OpenCode 请求头）、A2（桌面提醒）、A3（标签页闪烁）、A7（session.events
   # getter）已搬到 `dsh-local-extras` 插件，不再是源码补丁：它们挂的都是上游
   # 公开的扩展点，改源码已无必要。插件由 profile 的 bundles 加载，doctor 不探针它。
+  #
+  # A8（启动容忍 Windows 占住的 `.dsh-module-fallback`）也已退役：那个目录只出现在
+  # 从 0.1.5 升级上来的 profile 里，本机所有 profile 都没有它，补丁的第一行
+  # `if (!existsSync(owned)) return` 就已经返回，等于从未执行。0.2.x 新建的 profile
+  # 不会产生这个目录。
   @{ Name = 'A4 沙箱升级幂等'; Specs = @(
       'packages/sandbox/sandbox/tests/escalation.spec.ts',
       'packages/fs/tool-fs/tests/tools.spec.ts',
@@ -110,9 +115,6 @@ $specGroups = @(
       # 在这里跑只会得到 "No test files found"。它由上 Linux 通道或临时配置覆盖；
       # pwsh 侧的同名用例已在上面这条里跑过。
       'packages/shell/tool-pwsh/tests/tools.spec.ts') },
-  # 0.2.0 起 `.dsh-module-fallback` 的删除在 Windows 上会被实时扫描器/残留句柄短暂挡住，
-  # 拦不住就让整个 boot 失败是不划算的（见 A8 的用例）。
-  @{ Name = 'A8 启动容忍 Windows 占住的模块回落树'; Specs = @('packages/boot/app-boot/tests/profile.spec.ts') },
   # OpenCode 路由的网关对超窗请求回 400 且 body 为空，SDK 只剩
   # `400 status code (no body)`；不归类成上下文超限，压缩就没有机会减量重试。
   @{ Name = 'A9 空 body 400 归类为上下文超限'; Specs = @('packages/llm/llm-pi-ai/tests/convert.spec.ts') }
