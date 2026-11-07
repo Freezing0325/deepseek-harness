@@ -118,7 +118,40 @@ pnpm install                         # 官方可能改了依赖，装一下
 | `git restore <文件>` | 丢弃某文件改动（危险） |
 | `git stash` | 暂时收起未提交改动（可恢复） |
 
-## 七、在另一台电脑上同步这次的更新
+## 七、官方出新版时，这台机器怎么更新（大白话版）
+
+按顺序跑，**前一条失败就停下来修，别硬往下走**：
+
+```powershell
+deepseek stop                     # 1. 停服务：Windows 会锁住正在运行的文件，不停 build 会失败
+cd E:\Code\deepseek-harness
+git fetch origin                  # 2. 下载官方新版（只进仓库，不动你正在用的文件）
+git rebase origin/master          # 3. 把 A9 那 9 行改动重新贴到新版上
+pnpm install && pnpm run build    # 4. 装依赖 + 编译，约 10 分钟
+local\doctor.cmd                  # 5. 体检，最后一行 FAIL 必须是 0
+deepseek web                      # 6. 启动验证（体检绿 ≠ 真能跑）
+```
+
+每一条在干什么：
+
+| 命令 | 作用 | 失败说明 |
+|---|---|---|
+| `deepseek stop` | 停掉正在跑的服务，释放文件锁 | 本来就没在跑也无所谓 |
+| `git fetch origin` | 去官方下载最新代码，**不碰你的工作文件** | 多半是网络 / Clash 没开 |
+| `git rebase origin/master` | 把你的补丁从旧版"撕下来"，贴到新版对应位置 | 有冲突就手工解；解不动用 `git rebase --abort` 退回更新前 |
+| `pnpm install` | 下载官方新版用到的第三方库 | 网络问题 |
+| `pnpm run build` | 把源代码编译成能跑的程序 | 先确认 install 跑过；跨大版本先 `pnpm run clean` |
+| `local\doctor.cmd` | 自检补丁、版本、插件、外部路径 | 它会写明哪条没过 |
+| `deepseek web` | 真启动一次看看 | 起不来就看 `~\.dsh\web.err.log` |
+
+**两条铁律**：
+
+1. **别手动跑 `tsc -b`**：Node 默认只给 4GB 堆，会内存溢出；官方脚本给 8GB。一律用 `pnpm run build`。
+2. **rebase 搞砸了不会丢东西**：git 里旧版本一直在，`git rebase --abort` 就回到更新前。
+
+**冲突只会来自 A9**（`packages/llm/llm-pi-ai/src/stream.ts` 的 `classifyPiAiError`）。其他文件都不该冲突——真冲突了说明有别的改动混进来了，先查清楚。
+
+## 八、在另一台电脑上同步这次的更新
 
 两台电脑共用同一个 fork，但**0.2.2 这次升级重写了 `my-custom-020` 的历史**（官方 0.2.0-rc.2 → 0.2.2-rc.1，本地补丁全部重放，提交号全变了），所以那台**不能直接 `git pull`**（会报分叉或 non-fast-forward）：
 
@@ -138,17 +171,15 @@ local\doctor.cmd                             # 8. 自检，应全绿
 
 git 管不到的部分（启动器、`~/.dsh` 配置、profile 里指向工作区的外部插件路径）逐项登记在 **`local/PORTING.md`**，按它核对即可。
 
-## 八、当前进度（本次更新结果）
+## 九、当前进度（2026-11-07）
 
-- 官方版本：**0.2.2-rc.1**（`my-custom-020` 已对齐到该 tag）
-- 0.2.2 迁移：**先跑 `local\fix-022.ps1`**（幂等，会自动停掉占用 3080 的旧服务、备份并更新两个 profile、装全局 TUI）
-  - `dsh-tui` 0.12.0 / 0.18.0 的 peer 只到 `0.2.1-rc.5`，会被 `0.2.2-rc.1` 跳过 → 换 `0.19.0`
-  - 六个 `@linxin666/*` 从 `0.4.4` 升到 `0.4.15`；web020 还要显式依赖 `@deepseek-ai/dsh-settings@0.2.2-rc.1`（0.4.15 的 `web-ui-settings` 仍不声明它，缺了会激活失败）
-  - `@huanlin/dsh-plugin-session-delete@0.3.1` 仍不兼容、会被跳过；警告不致命，**不要**用 allow-version 强拉
-- 验证结果（隔离 `DSH_HOME`）：`web020` 能打印带 token 的 URL；`dsh-tui` 正常渲染，底部显示 `dsh-tui v0.19.0` / `dsh-core v0.2.2-rc.1`；`local\fix-022.ps1` 可重复执行
-- 上一轮 0.2.1-rc.5 rebase 记录：本地补丁 **A1–A9 + B1–B2**，39 个提交全部重放成功；共 4 处冲突，均已手工合并
-  （`api-remotes/package.json` 的依赖块取并集；两处翻译配对哈希交由生成器重记；上游已删除的 sandbox note 侧车文件接受删除）
-- 新增补丁 A9：OpenCode 网关对超窗请求回 400 且 body 为空，归类为上下文超限，让压缩能减量重试
-- 0.2.1 时验证：`pnpm run build` 宿主侧与 Web 前端均通过；`local\doctor.cmd` 的 A1–A9 全绿（A4 187 例、A7 80 例、A8 36 例、A9 83 例）；`dsh-preflight.mjs` 与更新前基线逐项一致（仅 3080 端口无服务、3 个幽灵工作区）
-- 构建链注意：本次起要求 `pnpm@11.28.5`，且 Windows 上 `vite build` 需绕开被占用的系统 Temp（见 `CLAUDE.local.md` 陷阱）
-- 换机：另一台电脑怎么同步见本文第七节；git 管不到的配置与插件路径见 `local/PORTING.md`
+- 官方版本：**0.2.2-rc.1**；分支 `my-custom-020` 是唯一分支，也是 fork 默认分支
+- **源码补丁只剩一条 A9**：OpenCode 网关对超窗请求回 400 且 body 为空时，归类为上下文超限，让压缩能减量重试
+- 其余补丁的去向见本文第一节的表格；插件源码在 `E:\Code\dsh-plugins\dsh-local-extras`，分发包是同目录的 `dsh-local-extras-1.0.0.tgz`
+- 构建：`pnpm run build` 10 个 gate 全过；`local\doctor.cmd` 12 OK / 0 FAIL
+- 0.2.2 迁移要点（已固化进 `local\fix-022.ps1`）：
+  - `dsh-tui` 必须 0.19.0（0.12 / 0.18 的 peer 只到 0.2.1-rc.5，会被 0.2.2 跳过）
+  - 六个 `@linxin666/*` 用 0.4.15；web020 要显式依赖 `@deepseek-ai/dsh-settings@0.2.2-rc.1`
+  - `@huanlin/dsh-plugin-session-delete@0.3.1` 不兼容会被跳过，警告不致命，**不要**用 allow-version 强拉
+- 构建链注意：要求 `pnpm@11.28.5`；Windows 上 `vite build` 需绕开被占用的系统 Temp（见 `CLAUDE.local.md` 陷阱）
+- 换机：另一台电脑怎么同步见本文第八节；git 管不到的配置与插件路径见 `local/PORTING.md`
