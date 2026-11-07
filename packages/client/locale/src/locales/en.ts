@@ -37,7 +37,6 @@ export const en = {
   'back': 'Back',
   'brand.localBuild': 'DSH Local Build',
   'workspace.defaultName': 'Default workspace',
-  'documentTitle.pending': '⚠️ Pending action',
   'unknown': 'Unknown',
   'none': 'None',
   'truncated': 'Truncated',

@@ -31,15 +31,19 @@
 
 | # | 补丁 | 探针（spec 文件） |
 |---|---|---|
-| A1 | OpenCode `x-opencode-session` 头（源码侧） | `packages/llm/llm-pi-ai/tests/session-header.spec.ts` |
-| A2 | 桌面提醒 desktop-notify（审批/提问/完成，win32） | `packages/api/remotes/tests/desktop-notify.spec.ts` |
-| A3 | 标签页待审批闪烁 | `packages/client/ui-layout/tests/document-title.client.spec.tsx` |
 | A4 | 沙箱升级幂等（重复的非扩权升级请求不再报错） | `packages/sandbox/sandbox/tests/escalation.spec.ts`、`packages/fs/tool-fs/tests/tools.spec.ts`、`packages/shell/tool-pwsh/tests/tools.spec.ts`（`tool-bash` 的 spec 在 win32 被上游测试配置排除，需专用配置才跑得起来） |
 | A5 | 一键更新脚本 + git 指南（本目录的宿主） | 文件存在性断言（doctor 内置，无需 spec） |
 | A6 | Agent Note 文档配对记录 | 文件存在性断言（doctor 内置） |
-| A7 | `session.events` getter（`deepseek tui` 读取；快照重构后变成 undefined） | `packages/core/session/tests/session.spec.ts`（`events getter` 两条用例） |
 | A8 | 启动时容忍 Windows 短暂占住 `.dsh-module-fallback`：`EPERM`/`EBUSY` 只跳过删除（此时链接已解绑，剩下的只是磁盘残留），其它错误照旧抛出 | `packages/boot/app-boot/tests/profile.spec.ts`（`survives a tree Windows still holds ...`） |
 | A9 | OpenCode 路由的网关对超窗流式请求回 400 且 body 为空（SDK 只剩 `400 status code (no body)`），把这种形状归类为上下文超限，让压缩能减量重试 | `packages/llm/llm-pi-ai/tests/convert.spec.ts`（`400 status code (no body)` 那条用例） |
+
+> **A1 / A2 / A3 / A7 已退役**（2026-11-07），搬到仓库外的 `dsh-local-extras` 插件：
+> - A1（OpenCode 请求头）→ 上游 0.2.2 的 `llm-pi-ai/request-headers` waterfall
+> - A2（桌面提醒）→ `approval/request`、`user-questions/request`、`agent/status` 三个公开事件
+> - A3（标签页闪烁）→ host 暴露 `GET /api/dsh-local-extras/pending`，浏览器轮询
+> - A7（`session.events` getter）→ TUI 0.19.0 已改用 `snapshotEvents()` 兼容层，不再需要
+>
+> 插件源码在 `E:\Code\dsh-plugins\dsh-local-extras`，装法是往 profile 的 `dsh.profile.bundles` 加一行 `dsh-local-extras`。**源码里已经没有这四条补丁**，以后 rebase 不会再和它们纠缠。
 
 > 补丁的提交号不在这里登记：rebase 会重写它们，写死必然腐烂。要看某条补丁的当前提交，用 `git log --oneline --grep='<提交主题>'`（主题见本表第二列）。
 

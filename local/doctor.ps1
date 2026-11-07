@@ -100,9 +100,9 @@ else {
 Write-Section '2/5  A 类源码补丁（跑 spec 探针）'
 
 $specGroups = @(
-  @{ Name = 'A1 OpenCode session 头'; Specs = @('packages/llm/llm-pi-ai/tests/session-header.spec.ts') },
-  @{ Name = 'A2 桌面提醒 desktop-notify'; Specs = @('packages/api/remotes/tests/desktop-notify.spec.ts') },
-  @{ Name = 'A3 标签页待审批闪烁'; Specs = @('packages/client/ui-layout/tests/document-title.client.spec.tsx') },
+  # A1（OpenCode 请求头）、A2（桌面提醒）、A3（标签页闪烁）、A7（session.events
+  # getter）已搬到 `dsh-local-extras` 插件，不再是源码补丁：它们挂的都是上游
+  # 公开的扩展点，改源码已无必要。插件由 profile 的 bundles 加载，doctor 不探针它。
   @{ Name = 'A4 沙箱升级幂等'; Specs = @(
       'packages/sandbox/sandbox/tests/escalation.spec.ts',
       'packages/fs/tool-fs/tests/tools.spec.ts',
@@ -110,7 +110,6 @@ $specGroups = @(
       # 在这里跑只会得到 "No test files found"。它由上 Linux 通道或临时配置覆盖；
       # pwsh 侧的同名用例已在上面这条里跑过。
       'packages/shell/tool-pwsh/tests/tools.spec.ts') },
-  @{ Name = 'A7 session.events getter（TUI 读取）'; Specs = @('packages/core/session/tests/session.spec.ts') },
   # 0.2.0 起 `.dsh-module-fallback` 的删除在 Windows 上会被实时扫描器/残留句柄短暂挡住，
   # 拦不住就让整个 boot 失败是不划算的（见 A8 的用例）。
   @{ Name = 'A8 启动容忍 Windows 占住的模块回落树'; Specs = @('packages/boot/app-boot/tests/profile.spec.ts') },
@@ -154,7 +153,7 @@ else {
 # 设施文件与文档配对：没有 spec，用存在性断言
 $infraFiles = @(
   'GIT-GUIDE.md', 'update-dsh.cmd', 'local\README.md', 'local\PORTING.md',
-  'local\doctor.cmd', 'local\doctor.ps1', 'local\patch-opencode-session.cjs'
+  'local\doctor.cmd', 'local\doctor.ps1'
 )
 $missing = @()
 foreach ($rel in $infraFiles) {
@@ -188,25 +187,9 @@ else {
 # --------------------------------------------------------------------------
 Write-Section '3/5  B 类仓库外补丁'
 
-# B1：npm 版 dsh 的 x-opencode-session 头（deepseek tui 链路）
-$patchScript = Join-Path $PSScriptRoot 'patch-opencode-session.cjs'
-if (-not (Test-Path $patchScript)) {
-  Add-Check 'B类' 'B1 npm 产物 session 头' 'FAIL' "找不到 $patchScript"
-}
-else {
-  $out = (& node $patchScript 2>&1 | Out-String)
-  $code = $LASTEXITCODE
-  $actions = ([regex]::Matches($out, 'patch:\s+(.+)') | ForEach-Object { $_.Groups[1].Value.Trim() }) -join '; '
-  $verifies = ([regex]::Matches($out, 'verify:\s+(.+)') | ForEach-Object { $_.Groups[1].Value.Trim() }) -join '; '
-  if ($code -eq 0) {
-    Add-Check 'B类' 'B1 npm 产物 session 头' 'OK' ("$actions | $verifies")
-  }
-  else {
-    $firstErr = ([regex]::Match($out, 'patch-opencode-session:.*')).Value
-    if (-not $firstErr) { $firstErr = ($out.Trim() -split "`r?`n" | Select-Object -Last 1) }
-    Add-Check 'B类' 'B1 npm 产物 session 头' 'FAIL' "$actions | $firstErr"
-  }
-}
+# B1（npm 版 dsh 的 x-opencode-session 头）已退役：`dsh-local-extras` 插件挂在
+# `llm-pi-ai/request-headers` 上，源码版与 TUI profile 都走它，不再需要给 npm
+# 产物打补丁。启动器 B2 仍只做断言。
 
 # B2：deepseek 启动器（只断言，不自动重放 —— 见 README 第三节）
 $binDir = Join-Path $env:USERPROFILE '.dsh\bin'

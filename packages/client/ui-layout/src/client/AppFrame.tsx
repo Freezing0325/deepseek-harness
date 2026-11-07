@@ -131,16 +131,11 @@ export function AppFrame({
   useSessions,
   usePanelInfo,
   useFoldedLandscape,
-  useSessionStatus,
   actions,
   renderSlot,
   t,
 }: AppFrameProps) {
   const layoutInfo = useStore(state => state.layoutInfo)
-  // Any Session waiting on the user (approval, question, plan review) drives
-  // the tab-title attention flash while the page is hidden.
-  const pendingInteraction = useSessionStatus(snapshot =>
-    [...snapshot.values()].some(status => status.pendingInteraction !== undefined))
   const frameRef = useRef<HTMLDivElement | null>(null)
   const viewport = layoutInfo.viewportWidth
   const foldedLandscape = useFoldedLandscape(matches => matches)
@@ -310,8 +305,6 @@ export function AppFrame({
       data-animating={animateTracks || undefined}
     >
       <DocumentTitle
-        attentionTitle={t('documentTitle.pending')}
-        pendingInteraction={pendingInteraction}
         productTitle={productTitle}
         useSessions={useSessions}
         usePanelInfo={usePanelInfo}
