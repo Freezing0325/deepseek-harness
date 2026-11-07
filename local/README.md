@@ -15,7 +15,7 @@
 
 | 类别 | 住在哪 | 上游更新时会怎样 | 失效方式 |
 |---|---|---|---|
-| **A 源码补丁** | 本仓库 `my-custom` 上的 commit | `git rebase origin/master` 自动重放 | rebase 冲突；或 rebase 干净通过但语义被改坏；或提交被判"上游已应用"而**静默丢弃** |
+| **A 源码补丁** | 本仓库 `my-custom-020` 上的 commit | `git rebase origin/master` 自动重放 | rebase 冲突；或 rebase 干净通过但语义被改坏；或提交被判"上游已应用"而**静默丢弃** |
 | **B 仓库外补丁** | `~/.dsh/`、npm 全局目录 | git 完全不管 | `npm update -g` 直接覆盖；换机/重装后凭空消失 |
 | **C 配置** | `~/.dsh/settings.yaml`、profile 的 `cordis.patch.yml` | git 完全不管 | 靠人记得；无版本历史 |
 
@@ -100,7 +100,7 @@ local\doctor.cmd -Quick     :: 跳过 A 类 spec（只看 fork 漂移与 B 类�
 ## 六、加一条新补丁时
 
 1. 改代码，**同时写一个 spec**（这就是你未来的探针）。
-2. 提交到 `my-custom`，小步提交、一条补丁一个目的。
+2. 提交到 `my-custom-020`，小步提交、一条补丁一个目的。
 3. 到本文件第二节加一行：补丁名、提交号、探针文件。
 4. 跑一次 `local\doctor.cmd` 确认它变绿。
-5. `git push mine my-custom` 推给 fork。
+5. `git push mine my-custom-020` 推给 fork。

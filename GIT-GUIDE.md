@@ -3,35 +3,38 @@
 本指南面向不熟悉 git 的你，把 `D:\Code\deepseek-harness` 这个仓库的日常操作讲清楚。
 配合 `update-dsh.cmd`（一键更新脚本）使用。
 
-## 一、仓库的两个分支（先记住这个）
+## 一、仓库只有一个分支（先记住这个）
 
 | 分支 | 内容 | 什么时候用 |
 |---|---|---|
-| `master` | 和官方完全一致（纯净版） | 对比官方用，**永远不要在上面提交** |
-| `my-custom` | 官方 + 你的本地补丁（默认分支） | 你所有的工作都在这 |
+| `my-custom-020` | 官方 0.2.2 + 唯一一条本地补丁（A9） | 你所有的工作都在这，也是 fork 的默认分支 |
 
-你的本地补丁按主题分就是这几类（逐条登记在 `local/README.md`；**具体条数以 `git log --oneline origin/master..my-custom` 为准**，每次同步都会多几条登记同步的小提交）：
+2026-11-07 清理：`master`（官方旧镜像）、`my-custom`（0.1.5 回退线）和全部 `backup/*` 都已删除，本地与远程都只剩这一条。**0.1.5 线不再保留**——按你的规则，新版本能正常启动，旧线就该清掉。
+
+你的本地补丁现在**只剩一条**（逐条登记在 `local/README.md`；条数以 `git log --oneline origin/master..my-custom-020` 为准）：
 
 ```
-feat(session): session.events getter（dsh-tui 读取的快照 API）
-fix(llm-pi-ai): OpenCode x-opencode-session 头
-feat(api-remotes): 桌面提醒（审批/提问/任务完成，win32）
-feat(ui-layout): 标题待审批闪烁 + 按新结构的适配
-fix(sandbox): 沙箱升级幂等（非扩权请求不再报错）
-docs / chore: 一键更新脚本 + git 指南 + local/ 补丁自检 + 每次 rebase 后的登记同步
+fix(llm-pi-ai): OpenCode 网关的空 body 400 归类为上下文超限
 ```
 
-> 2026-09 更新说明：网络控制策略（sandbox 独立网络策略轴、tool-web 网络门禁、
-> 目录/文档同步，共 4 个提交）**已确认鸡肋并移除**——没有 UI/CLI 入口、默认 allow
-> 不改变任何行为，且横跨 sandbox/web/core 核心包、每次上游更新都冲突。
-> directory-picker 的 UTF-16 修复上游已自带同名修复，因此一并放弃。
+其余历史补丁的去向：
+
+| 补丁 | 现在在哪 |
+|---|---|
+| A1 OpenCode 请求头 | 仓库外的 `dsh-local-extras` 插件（挂官方 `llm-pi-ai/request-headers`） |
+| A2 桌面提醒 | 同一个插件（挂 `approval/request` 等公开事件） |
+| A3 标签页闪烁 | 同一个插件（host 端点 + 浏览器轮询） |
+| A4 沙箱升级幂等 | 官方 0.2.0 起自带同口径 |
+| A7 `session.events` getter | dsh-tui 0.19 已改用 `snapshotEvents()` |
+| A8 Windows 模块回落树容错 | 那个目录只出现在 0.1.5 升级上来的 profile，本机没有 |
+| B1 npm 产物补丁 | 插件已覆盖 TUI profile |
 
 ## 二、查看状态（最常用的三条）
 
 ```bash
 git status                 # 当前状态：改了什么、有没提交
 git log --oneline -5       # 最近 5 条提交
-git log --oneline origin/master..my-custom   # 你的补丁清单
+git log --oneline origin/master..my-custom-020   # 你的补丁清单
 ```
 
 ## 三、日常：改了代码后提交（你开发完功能的收尾）
@@ -110,24 +113,25 @@ pnpm install                         # 官方可能改了依赖，装一下
 | `git rebase --continue` | 解决冲突后继续 |
 | `git rebase --abort` | 放弃本次 rebase |
 | `git log --oneline -5` | 最近提交 |
-| `git log --oneline origin/master..my-custom` | 我的补丁 |
+| `git log --oneline origin/master..my-custom-020` | 我的补丁 |
 | `git diff` | 查看未提交的改动内容 |
 | `git restore <文件>` | 丢弃某文件改动（危险） |
 | `git stash` | 暂时收起未提交改动（可恢复） |
 
 ## 七、在另一台电脑上同步这次的更新
 
-两台电脑共用同一个 fork，但**这次升级重写了 `my-custom` 的历史**（官方 0.1.2-alpha.5 → 0.1.5-rc.1，本地补丁全部重放，提交号全变了），所以那台**不能直接 `git pull`**（会报分叉或 non-fast-forward）：
+两台电脑共用同一个 fork，但**0.2.2 这次升级重写了 `my-custom-020` 的历史**（官方 0.2.0-rc.2 → 0.2.2-rc.1，本地补丁全部重放，提交号全变了），所以那台**不能直接 `git pull`**（会报分叉或 non-fast-forward）：
 
 ```bash
 git status                                   # 1. 确认没有未提交改动（有就先提交或 stash）
-git branch backup/pre-0.1.5-<日期>            # 2. 备份（别省）
-git checkout my-custom
+git branch backup/pre-0.2.2-<日期>            # 2. 备份（别省）
+git checkout my-custom-020
 git fetch mine                               # 3. 远端名以 git remote -v 为准（origin=官方，mine=fork）
-git reset --hard mine/my-custom              # 4. 直接对齐到 fork
+git reset --hard mine/my-custom-020          # 4. 直接对齐到 fork
 pnpm install                                 # 5. 官方改了依赖
 pnpm run build                               # 6. 必须：TUI 读的是构建产物
-local\doctor.cmd                             # 7. 自检，应全绿
+pwsh -File local\fix-022.ps1                 # 7. 两个 profile 迁到 0.2.2 线（幂等）
+local\doctor.cmd                             # 8. 自检，应全绿
 ```
 
 ⚠️ 那台若本地有这台没有的提交，**先别 reset**：记下那几条提交，重置后 `git cherry-pick`，或先告诉这台，由这台合并后再统一推。

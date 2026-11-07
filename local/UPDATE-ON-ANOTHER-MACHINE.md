@@ -10,7 +10,7 @@
 ## 0. 先弄清这份仓库是什么、目标形态是什么
 
 - 仓库 = 用户的 dsh fork：`https://github.com/Freezing0325/deepseek-harness.git`（远端名约定：**`mine` = fork**、**`origin` = 官方 `deepseek-ai/deepseek-harness`**）。
-- **要用的分支是 `my-custom-020`**（0.2.2 线）。`my-custom` 是 0.1.5 旧线，只作回退，不要拿它当更新目标。
+- **要用的分支是 `my-custom-020`**（0.2.2 线），也是 fork 的默认分支。`my-custom`（0.1.5 旧线）已于 2026-11-07 删除，不要再找它。
 - ⚠️ **fork 的默认分支目前是 `master`**（旧的官方镜像）。所以 `git clone` 之后**必须显式切到 `my-custom-020`**，否则你会在一条废弃的线上干活。用户也可以在 GitHub 仓库设置里把默认分支改成 `my-custom-020`（一次性，之后 clone 就自动落在正确分支上）。
 - **目标形态：一个目录** —— 该目录既是 git 仓库本体（自带 `.git` 与全部历史），也是正在运行的 0.2.2 树。profile 定义（插件清单 / provider 清单 / 禁用条目）都在仓库的 `local/profile/` 里，由 `local/setup-020.ps1` 写进 `~/.dsh/profiles/`。
 - **这个仓库不含**（属于每台机器自己的东西，别去仓库里找）：

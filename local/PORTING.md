@@ -44,7 +44,9 @@ git reset --hard mine/my-custom-020
 
 重置后还要跑一次 `local\fix-022.ps1`：官方 0.2.2 的 peer 范围拒掉 `dsh-tui` 0.12/0.18，profile 与全局 TUI 都得升到 **0.19.0**，`web020` 还要显式声明 `@deepseek-ai/dsh-settings`（`web-ui-settings` 自己 import 却不声明）。`local\doctor.cmd` 第 5 节会把这三处版本与模板逐个比对。
 
-### 1.2.1 更早的一次重写（2026-09-10，0.1.5）
+### 1.2.1 更早的一次重写（2026-09-10，0.1.5）——**仅作历史，分支已删除**
+
+> ⚠️ 下面这段对应的 `my-custom`（0.1.5 线）已于 2026-11-07 连同全部 `backup/*` 一起删除，**不要再执行这些命令**。保留它只为解释当时发生过什么。
 
 官方从 `0.1.2-alpha.5` 跳到 `0.1.5-rc.1`（1459 条提交），15 条本地补丁全部 rebase 重放，**sha 全变了**。那台如果还停在旧 sha 上，普通 `git pull` 会失败或产生分叉 —— 显式重置：
 
@@ -250,8 +252,8 @@ node local/patch-opencode-session.cjs
 
 | 角色 | 本机值 | 仓库里的位置 |
 |---|---|---|
-| 0.2.0 树（**唯一**） | `D:\Code\deepseek-harness`（自带 `.git`，分支 `my-custom-020`，已推 `mine/my-custom-020`） | 就是这个仓库的 `my-custom-020` 分支 |
-| 0.1.5 | 分支 `my-custom`，**没有独立检出**；回退 = `git checkout my-custom` + `pnpm install` + `pnpm run build`（约 10 分钟，不再是秒级） | 同一仓库的 `my-custom` 分支；远端也有 `mine/my-custom` |
+| 0.2.2 树（**唯一**） | `E:\Code\deepseek-harness`（自带 `.git`，分支 `my-custom-020`，已推 `mine/my-custom-020`，也是 fork 的默认分支） | 就是这个仓库的 `my-custom-020` 分支 |
+| 0.1.5 | **已删除**（2026-11-07）：新版本能正常启动后，旧线不再保留。要回退只能从 git 历史里捞（本地 reflog 或 GitHub 的已删分支记录） | 无 |
 | 0.2.0 Web profile | `~\.dsh\profiles\web020` | `local/profile/web020/`（3 个文件） |
 | TUI profile | `~\.dsh\profiles\dsh-tui` | `local/profile/dsh-tui/`（2 个文件） |
 | 指针 | `~\.dsh\tree.txt` 选树；`<树>\.dsh-profile` 选该树的 profile | 机器本地，**不进 git**（已在 `.gitignore` 里） |
